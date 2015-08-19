@@ -10,17 +10,57 @@ vodka是一个修改自Golang Echo Web framework的强大Go语言web框架,仅�
 
     go get github.com/insionng/vodka
 
-## Examples
-
-请访问 [examples](https://github.com/insionng/vodka/tree/master/examples) folder
+A fast and unfancy micro web framework for Golang.
 
 
-## 文档
+## Features
 
-[快速入门](https://github.com/insionng/vodka/tree/master/docs/intro.md)
+- Fast HTTP router which smartly prioritize routes.
+- Extensible middleware, supports:
+	- `echo.MiddlewareFunc`
+	- `func(echo.HandlerFunc) echo.HandlerFunc`
+	- `echo.HandlerFunc`
+	- `func(*echo.Context) error`
+	- `func(http.Handler) http.Handler`
+	- `http.Handler`
+	- `http.HandlerFunc`
+	- `func(http.ResponseWriter, *http.Request)`
+- Extensible handler, supports:
+    - `echo.HandlerFunc`
+    - `func(*echo.Context) error`
+    - `http.Handler`
+    - `http.HandlerFunc`
+    - `func(http.ResponseWriter, *http.Request)`
+- Sub-router/Groups
+- Handy functions to send variety of HTTP response:
+    - HTML
+    - HTML via templates
+    - String 
+    - JSON
+    - JSONP
+    - XML
+    - File
+    - NoContent
+    - Redirect
+    - Error
+- Build-in support for:
+	- Favicon
+	- Index file
+	- Static files
+	- WebSocket
+- Centralized HTTP error handling.
+- Customizable HTTP request binding function.
+- Customizable HTTP response rendering function, allowing you to use any HTML template engine.
+
+## Vodka System
+
+Community created packages for Vodka
+
+- [hello world](https://github.com/vodka-contrib/helloworld)
+
 
 ## License
-BSD License
-[http://creativecommons.org/licenses/BSD/](http://creativecommons.org/licenses/BSD/)
+MIT License
+
 
 
