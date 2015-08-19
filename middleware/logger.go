@@ -4,8 +4,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/insionng/vodka/libraries/labstack/gommon/color"
 	"github.com/insionng/vodka"
-	"github.com/labstack/gommon/color"
 )
 
 func Logger() vodka.MiddlewareFunc {

@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/insionng/vodka"
+	mw "github.com/insionng/vodka/middleware"
 )
 
 const (
@@ -15,17 +15,17 @@ const (
 )
 
 // A JSON Web Token middleware
-func JWTAuth(key string) echo.HandlerFunc {
-	return func(c *echo.Context) error {
+func JWTAuth(key string) vodka.HandlerFunc {
+	return func(c *vodka.Context) error {
 
 		// Skip WebSocket
-		if (c.Request().Header.Get(echo.Upgrade)) == echo.WebSocket {
+		if (c.Request().Header.Get(vodka.Upgrade)) == vodka.WebSocket {
 			return nil
 		}
 
 		auth := c.Request().Header.Get("Authorization")
 		l := len(Bearer)
-		he := echo.NewHTTPError(http.StatusUnauthorized)
+		he := vodka.NewHTTPError(http.StatusUnauthorized)
 
 		if len(auth) > l+1 && auth[:l] == Bearer {
 			t, err := jwt.Parse(auth[l+1:], func(token *jwt.Token) (interface{}, error) {
@@ -39,7 +39,7 @@ func JWTAuth(key string) echo.HandlerFunc {
 				return []byte(key), nil
 			})
 			if err == nil && t.Valid {
-				// Store token claims in echo.Context
+				// Store token claims in vodka.Context
 				c.Set("claims", t.Claims)
 				return nil
 			}
@@ -48,17 +48,17 @@ func JWTAuth(key string) echo.HandlerFunc {
 	}
 }
 
-func accessible(c *echo.Context) error {
+func accessible(c *vodka.Context) error {
 	return c.String(http.StatusOK, "No auth required for this route.\n")
 }
 
-func restricted(c *echo.Context) error {
+func restricted(c *vodka.Context) error {
 	return c.String(http.StatusOK, "Access granted with JWT.\n")
 }
 
 func main() {
 	// Echo instance
-	e := echo.New()
+	e := vodka.New()
 
 	// Logger
 	e.Use(mw.Logger())

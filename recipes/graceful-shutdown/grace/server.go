@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	"github.com/facebookgo/grace/gracehttp"
-	"github.com/labstack/echo"
+	"github.com/insionng/vodka"
 )
 
 func main() {
 	// Setup
-	e := echo.New()
-	e.Get("/", func(c *echo.Context) error {
+	e := vodka.New()
+	e.Get("/", func(c *vodka.Context) error {
 		return c.String(http.StatusOK, "Six sick bricks tick")
 	})
 

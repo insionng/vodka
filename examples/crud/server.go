@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/insionng/vodka"
+	mw "github.com/insionng/vodka/middleware"
 )
 
 type (
@@ -24,7 +24,7 @@ var (
 // Handlers
 //----------
 
-func createUser(c *echo.Context) error {
+func createUser(c *vodka.Context) error {
 	u := &user{
 		ID: seq,
 	}
@@ -36,12 +36,12 @@ func createUser(c *echo.Context) error {
 	return c.JSON(http.StatusCreated, u)
 }
 
-func getUser(c *echo.Context) error {
+func getUser(c *vodka.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	return c.JSON(http.StatusOK, users[id])
 }
 
-func updateUser(c *echo.Context) error {
+func updateUser(c *vodka.Context) error {
 	u := new(user)
 	if err := c.Bind(u); err != nil {
 		return err
@@ -51,14 +51,14 @@ func updateUser(c *echo.Context) error {
 	return c.JSON(http.StatusOK, users[id])
 }
 
-func deleteUser(c *echo.Context) error {
+func deleteUser(c *vodka.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	delete(users, id)
 	return c.NoContent(http.StatusNoContent)
 }
 
 func main() {
-	e := echo.New()
+	e := vodka.New()
 
 	// Middleware
 	e.Use(mw.Logger())

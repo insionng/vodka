@@ -6,11 +6,11 @@ import (
 
 	"net/http"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/insionng/vodka"
+	mw "github.com/insionng/vodka/middleware"
 )
 
-func upload(c *echo.Context) error {
+func upload(c *vodka.Context) error {
 	req := c.Request()
 
 	// req.ParseMultipartForm(16 << 20) // Max memory 16 MiB
@@ -45,7 +45,7 @@ func upload(c *echo.Context) error {
 }
 
 func main() {
-	e := echo.New()
+	e := vodka.New()
 	e.Use(mw.Logger())
 	e.Use(mw.Recover())
 

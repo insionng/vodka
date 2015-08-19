@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/insionng/testify/assert"
 	"github.com/insionng/vodka"
+	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
 )
 
 func TestBasicAuth(t *testing.T) {

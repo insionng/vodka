@@ -1,7 +1,7 @@
 package vodka
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"

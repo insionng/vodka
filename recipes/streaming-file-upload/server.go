@@ -3,14 +3,14 @@ package main
 import (
 	"io/ioutil"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/insionng/vodka"
+	mw "github.com/insionng/vodka/middleware"
 	"io"
 	"net/http"
 	"os"
 )
 
-func upload(c *echo.Context) error {
+func upload(c *vodka.Context) error {
 	mr, err := c.Request().MultipartReader()
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func upload(c *echo.Context) error {
 }
 
 func main() {
-	e := echo.New()
+	e := vodka.New()
 	e.Use(mw.Logger())
 	e.Use(mw.Recover())
 

@@ -16,9 +16,9 @@ import (
 
 	"encoding/xml"
 
-	"github.com/bradfitz/http2"
-	"github.com/labstack/gommon/color"
-	"golang.org/x/net/websocket"
+	"github.com/insionng/vodka/libraries/bradfitz/http2"
+	"github.com/insionng/vodka/libraries/labstack/gommon/color"
+	"github.com/insionng/vodka/libraries/net/websocket"
 )
 
 type (

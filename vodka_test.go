@@ -12,8 +12,8 @@ import (
 
 	"errors"
 
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/websocket"
+	"github.com/insionng/vodka/libraries/net/websocket"
+	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
 )
 
 type (

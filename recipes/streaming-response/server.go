@@ -6,7 +6,7 @@ import (
 
 	"encoding/json"
 
-	"github.com/labstack/echo"
+	"github.com/insionng/vodka"
 )
 
 type (
@@ -28,9 +28,9 @@ var (
 )
 
 func main() {
-	e := echo.New()
-	e.Get("/", func(c *echo.Context) error {
-		c.Response().Header().Set(echo.ContentType, echo.ApplicationJSON)
+	e := vodka.New()
+	e.Get("/", func(c *vodka.Context) error {
+		c.Response().Header().Set(vodka.ContentType, vodka.ApplicationJSON)
 		c.Response().WriteHeader(http.StatusOK)
 		for _, l := range locations {
 			if err := json.NewEncoder(c.Response()).Encode(l); err != nil {

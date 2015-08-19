@@ -3,19 +3,19 @@ package main
 import (
 	"fmt"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
-	"golang.org/x/net/websocket"
+	"github.com/insionng/vodka"
+	"github.com/insionng/vodka/libraries/net/websocket"
+	mw "github.com/insionng/vodka/middleware"
 )
 
 func main() {
-	e := echo.New()
+	e := vodka.New()
 
 	e.Use(mw.Logger())
 	e.Use(mw.Recover())
 
 	e.Static("/", "public")
-	e.WebSocket("/ws", func(c *echo.Context) (err error) {
+	e.WebSocket("/ws", func(c *vodka.Context) (err error) {
 		ws := c.Socket()
 		msg := ""
 
@@ -31,5 +31,5 @@ func main() {
 		return
 	})
 
-	e.Run(":1323")
+	e.Run(":9000")
 }

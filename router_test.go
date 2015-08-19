@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
 )
 
 var (

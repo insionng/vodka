@@ -13,7 +13,7 @@ import (
 	"encoding/xml"
 	"net/url"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
 )
 
 type (

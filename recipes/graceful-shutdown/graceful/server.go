@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/insionng/vodka"
 	"github.com/tylerb/graceful"
 )
 
 func main() {
 	// Setup
-	e := echo.New()
-	e.Get("/", func(c *echo.Context) error {
+	e := vodka.New()
+	e.Get("/", func(c *vodka.Context) error {
 		return c.String(http.StatusOK, "Sue sews rose on slow jor crows nose")
 	})
 
