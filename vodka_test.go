@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ type (
 	}
 )
 
-func TestEcho(t *testing.T) {
+func TestVodka(t *testing.T) {
 	e := New()
 	req, _ := http.NewRequest(GET, "/", nil)
 	rec := httptest.NewRecorder()
@@ -41,7 +41,7 @@ func TestEcho(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
-func TestEchoIndex(t *testing.T) {
+func TestVodkaIndex(t *testing.T) {
 	e := New()
 	e.Index("examples/website/public/index.html")
 	c, b := request(GET, "/", e)
@@ -49,7 +49,7 @@ func TestEchoIndex(t *testing.T) {
 	assert.NotEmpty(t, b)
 }
 
-func TestEchoFavicon(t *testing.T) {
+func TestVodkaFavicon(t *testing.T) {
 	e := New()
 	e.Favicon("examples/website/public/favicon.ico")
 	c, b := request(GET, "/favicon.ico", e)
@@ -57,7 +57,7 @@ func TestEchoFavicon(t *testing.T) {
 	assert.NotEmpty(t, b)
 }
 
-func TestEchoStatic(t *testing.T) {
+func TestVodkaStatic(t *testing.T) {
 	e := New()
 
 	// OK
@@ -88,11 +88,11 @@ func TestEchoStatic(t *testing.T) {
 	assert.Equal(t, "sub directory", r)
 }
 
-func TestEchoMiddleware(t *testing.T) {
+func TestVodkaMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	// echo.MiddlewareFunc
+	// vodka.MiddlewareFunc
 	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
 			buf.WriteString("a")
@@ -100,7 +100,7 @@ func TestEchoMiddleware(t *testing.T) {
 		}
 	}))
 
-	// func(echo.HandlerFunc) echo.HandlerFunc
+	// func(vodka.HandlerFunc) vodka.HandlerFunc
 	e.Use(func(h HandlerFunc) HandlerFunc {
 		return func(c *Context) error {
 			buf.WriteString("b")
@@ -108,13 +108,13 @@ func TestEchoMiddleware(t *testing.T) {
 		}
 	})
 
-	// echo.HandlerFunc
+	// vodka.HandlerFunc
 	e.Use(HandlerFunc(func(c *Context) error {
 		buf.WriteString("c")
 		return nil
 	}))
 
-	// func(*echo.Context) error
+	// func(*vodka.Context) error
 	e.Use(func(c *Context) error {
 		buf.WriteString("d")
 		return nil
@@ -166,7 +166,7 @@ func TestEchoMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
 
-func TestEchoHandler(t *testing.T) {
+func TestVodkaHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
@@ -174,7 +174,7 @@ func TestEchoHandler(t *testing.T) {
 		return c.String(http.StatusOK, "1")
 	}))
 
-	// func(*echo.Context) error
+	// func(*vodka.Context) error
 	e.Get("/2", func(c *Context) error {
 		return c.String(http.StatusOK, "2")
 	})
@@ -201,52 +201,52 @@ func TestEchoHandler(t *testing.T) {
 	})
 }
 
-func TestEchoConnect(t *testing.T) {
+func TestVodkaConnect(t *testing.T) {
 	e := New()
 	testMethod(t, CONNECT, "/", e)
 }
 
-func TestEchoDelete(t *testing.T) {
+func TestVodkaDelete(t *testing.T) {
 	e := New()
 	testMethod(t, DELETE, "/", e)
 }
 
-func TestEchoGet(t *testing.T) {
+func TestVodkaGet(t *testing.T) {
 	e := New()
 	testMethod(t, GET, "/", e)
 }
 
-func TestEchoHead(t *testing.T) {
+func TestVodkaHead(t *testing.T) {
 	e := New()
 	testMethod(t, HEAD, "/", e)
 }
 
-func TestEchoOptions(t *testing.T) {
+func TestVodkaOptions(t *testing.T) {
 	e := New()
 	testMethod(t, OPTIONS, "/", e)
 }
 
-func TestEchoPatch(t *testing.T) {
+func TestVodkaPatch(t *testing.T) {
 	e := New()
 	testMethod(t, PATCH, "/", e)
 }
 
-func TestEchoPost(t *testing.T) {
+func TestVodkaPost(t *testing.T) {
 	e := New()
 	testMethod(t, POST, "/", e)
 }
 
-func TestEchoPut(t *testing.T) {
+func TestVodkaPut(t *testing.T) {
 	e := New()
 	testMethod(t, PUT, "/", e)
 }
 
-func TestEchoTrace(t *testing.T) {
+func TestVodkaTrace(t *testing.T) {
 	e := New()
 	testMethod(t, TRACE, "/", e)
 }
 
-func TestEchoWebSocket(t *testing.T) {
+func TestVodkaWebSocket(t *testing.T) {
 	e := New()
 	e.WebSocket("/ws", func(c *Context) error {
 		c.socket.Write([]byte("test"))
@@ -267,7 +267,7 @@ func TestEchoWebSocket(t *testing.T) {
 	}
 }
 
-func TestEchoURL(t *testing.T) {
+func TestVodkaURL(t *testing.T) {
 	e := New()
 
 	static := func(*Context) error { return nil }
@@ -286,7 +286,7 @@ func TestEchoURL(t *testing.T) {
 	assert.Equal(t, "/group/users/1/files/1", e.URL(getFile, "1", "1"))
 }
 
-func TestEchoRoutes(t *testing.T) {
+func TestVodkaRoutes(t *testing.T) {
 	e := New()
 	h := func(*Context) error { return nil }
 	routes := []Route{
@@ -305,7 +305,7 @@ func TestEchoRoutes(t *testing.T) {
 	}
 }
 
-func TestEchoGroup(t *testing.T) {
+func TestVodkaGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 	e.Use(func(*Context) error {
@@ -348,7 +348,7 @@ func TestEchoGroup(t *testing.T) {
 
 	buf.Reset()
 	request(GET, "/group1/", e)
-	// println(len(g1.echo.middleware))
+	// println(len(g1.vodka.middleware))
 	assert.Equal(t, "01", buf.String())
 
 	buf.Reset()
@@ -360,7 +360,7 @@ func TestEchoGroup(t *testing.T) {
 	assert.Equal(t, http.StatusOK, c)
 }
 
-func TestEchoNotFound(t *testing.T) {
+func TestVodkaNotFound(t *testing.T) {
 	e := New()
 	r, _ := http.NewRequest(GET, "/files", nil)
 	w := httptest.NewRecorder()
@@ -368,7 +368,7 @@ func TestEchoNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-func TestEchoBadRequest(t *testing.T) {
+func TestVodkaBadRequest(t *testing.T) {
 	e := New()
 	r, _ := http.NewRequest("INVALID", "/files", nil)
 	w := httptest.NewRecorder()
@@ -376,20 +376,20 @@ func TestEchoBadRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestEchoHTTPError(t *testing.T) {
+func TestVodkaHTTPError(t *testing.T) {
 	m := http.StatusText(http.StatusBadRequest)
 	he := NewHTTPError(http.StatusBadRequest, m)
 	assert.Equal(t, http.StatusBadRequest, he.Code())
 	assert.Equal(t, m, he.Error())
 }
 
-func TestEchoServer(t *testing.T) {
+func TestVodkaServer(t *testing.T) {
 	e := New()
 	s := e.Server(":1323")
 	assert.IsType(t, &http.Server{}, s)
 }
 
-func testMethod(t *testing.T, method, path string, e *Echo) {
+func testMethod(t *testing.T, method, path string, e *Vodka) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
 	h := reflect.ValueOf(func(c *Context) error {
@@ -403,7 +403,7 @@ func testMethod(t *testing.T, method, path string, e *Echo) {
 	}
 }
 
-func request(method, path string, e *Echo) (int, string) {
+func request(method, path string, e *Vodka) (int, string) {
 	r, _ := http.NewRequest(method, path, nil)
 	w := httptest.NewRecorder()
 	e.ServeHTTP(w, r)

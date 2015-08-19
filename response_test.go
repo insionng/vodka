@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -36,7 +36,7 @@ func TestResponse(t *testing.T) {
 	assert.Equal(t, http.StatusOK, r.Status())
 
 	// Write
-	s := "echo"
+	s := "vodka"
 	_, err := r.Write([]byte(s))
 	assert.NoError(t, err)
 

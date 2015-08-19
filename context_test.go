@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import (
 	"errors"
@@ -76,14 +76,14 @@ func TestContext(t *testing.T) {
 	tpl := &Template{
 		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
 	}
-	c.echo.SetRenderer(tpl)
+	c.vodka.SetRenderer(tpl)
 	err := c.Render(http.StatusOK, "hello", "Joe")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "Hello, Joe!", rec.Body.String())
 	}
 
-	c.echo.renderer = nil
+	c.vodka.renderer = nil
 	err = c.Render(http.StatusOK, "hello", "Joe")
 	assert.Error(t, err)
 
@@ -156,7 +156,7 @@ func TestContext(t *testing.T) {
 	// Redirect
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
-	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/echo"))
+	assert.Equal(t, nil, c.Redirect(http.StatusMovedPermanently, "http://labstack.github.io/vodka"))
 
 	// Error
 	rec = httptest.NewRecorder()

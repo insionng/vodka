@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import (
 	"encoding/json"
@@ -26,17 +26,17 @@ type (
 		pvalues  []string
 		query    url.Values
 		store    store
-		echo     *Echo
+		vodka    *Vodka
 	}
 	store map[string]interface{}
 )
 
 // NewContext creates a Context object.
-func NewContext(req *http.Request, res *Response, e *Echo) *Context {
+func NewContext(req *http.Request, res *Response, e *Vodka) *Context {
 	return &Context{
 		request:  req,
 		response: res,
-		echo:     e,
+		vodka:    e,
 		pvalues:  make([]string, *e.maxParam),
 		store:    make(store),
 	}
@@ -107,18 +107,18 @@ func (c *Context) Set(key string, val interface{}) {
 // Bind binds the request body into specified type `i`. The default binder does
 // it based on Content-Type header.
 func (c *Context) Bind(i interface{}) error {
-	return c.echo.binder.Bind(c.request, i)
+	return c.vodka.binder.Bind(c.request, i)
 }
 
 // Render renders a template with data and sends a text/html response with status
-// code. Templates can be registered using `Echo.SetRenderer()`.
+// code. Templates can be registered using `Vodka.SetRenderer()`.
 func (c *Context) Render(code int, name string, data interface{}) error {
-	if c.echo.renderer == nil {
+	if c.vodka.renderer == nil {
 		return RendererNotRegistered
 	}
 	c.response.Header().Set(ContentType, TextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
-	return c.echo.renderer.Render(c.response, name, data)
+	return c.vodka.renderer.Render(c.response, name, data)
 }
 
 // HTML formats according to a format specifier and sends HTML response with
@@ -195,13 +195,13 @@ func (c *Context) Redirect(code int, url string) error {
 
 // Error invokes the registered HTTP error handler. Generally used by middleware.
 func (c *Context) Error(err error) {
-	c.echo.httpErrorHandler(err, c)
+	c.vodka.httpErrorHandler(err, c)
 }
 
-func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Echo) {
+func (c *Context) reset(r *http.Request, w http.ResponseWriter, e *Vodka) {
 	c.request = r
 	c.response.reset(w)
 	c.query = nil
 	c.store = nil
-	c.echo = e
+	c.vodka = e
 }

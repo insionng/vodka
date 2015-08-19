@@ -5,17 +5,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo"
-	"github.com/stretchr/testify/assert"
+	"github.com/insionng/testify/assert"
+	"github.com/insionng/vodka"
 )
 
 func TestRecover(t *testing.T) {
-	e := echo.New()
+	e := vodka.New()
 	e.SetDebug(true)
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req, _ := http.NewRequest(vodka.GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := echo.NewContext(req, echo.NewResponse(rec), e)
-	h := func(c *echo.Context) error {
+	c := vodka.NewContext(req, vodka.NewResponse(rec), e)
+	h := func(c *vodka.Context) error {
 		panic("test")
 	}
 	Recover()(h)(c)

@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import (
 	"fmt"
@@ -277,7 +277,7 @@ var (
 func TestRouterStatic(t *testing.T) {
 	e := New()
 	r := e.router
-	path := "/folders/a/files/echo.gif"
+	path := "/folders/a/files/vodka.gif"
 	r.Add(GET, path, func(c *Context) error {
 		c.Set("path", path)
 		return nil

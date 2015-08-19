@@ -1,69 +1,69 @@
-package echo
+package vodka
 
 type (
 	Group struct {
-		echo Echo
+		vodka Vodka
 	}
 )
 
 func (g *Group) Use(m ...Middleware) {
 	for _, h := range m {
-		g.echo.middleware = append(g.echo.middleware, wrapMiddleware(h))
+		g.vodka.middleware = append(g.vodka.middleware, wrapMiddleware(h))
 	}
 }
 
 func (g *Group) Connect(path string, h Handler) {
-	g.echo.Connect(path, h)
+	g.vodka.Connect(path, h)
 }
 
 func (g *Group) Delete(path string, h Handler) {
-	g.echo.Delete(path, h)
+	g.vodka.Delete(path, h)
 }
 
 func (g *Group) Get(path string, h Handler) {
-	g.echo.Get(path, h)
+	g.vodka.Get(path, h)
 }
 
 func (g *Group) Head(path string, h Handler) {
-	g.echo.Head(path, h)
+	g.vodka.Head(path, h)
 }
 
 func (g *Group) Options(path string, h Handler) {
-	g.echo.Options(path, h)
+	g.vodka.Options(path, h)
 }
 
 func (g *Group) Patch(path string, h Handler) {
-	g.echo.Patch(path, h)
+	g.vodka.Patch(path, h)
 }
 
 func (g *Group) Post(path string, h Handler) {
-	g.echo.Post(path, h)
+	g.vodka.Post(path, h)
 }
 
 func (g *Group) Put(path string, h Handler) {
-	g.echo.Put(path, h)
+	g.vodka.Put(path, h)
 }
 
 func (g *Group) Trace(path string, h Handler) {
-	g.echo.Trace(path, h)
+	g.vodka.Trace(path, h)
 }
 
 func (g *Group) WebSocket(path string, h HandlerFunc) {
-	g.echo.WebSocket(path, h)
+	g.vodka.WebSocket(path, h)
 }
 
 func (g *Group) Static(path, root string) {
-	g.echo.Static(path, root)
+	g.vodka.Static(path, root)
 }
 
 func (g *Group) ServeDir(path, root string) {
-	g.echo.ServeDir(path, root)
+	g.vodka.ServeDir(path, root)
 }
 
 func (g *Group) ServeFile(path, file string) {
-	g.echo.ServeFile(path, file)
+	g.vodka.ServeFile(path, file)
 }
 
 func (g *Group) Group(prefix string, m ...Middleware) *Group {
-	return g.echo.Group(prefix, m...)
+	return g.vodka.Group(prefix, m...)
 }

@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import "net/http"
 
@@ -14,7 +14,7 @@ type (
 		putTree     *node
 		traceTree   *node
 		routes      []Route
-		echo        *Echo
+		vodka       *Vodka
 	}
 	node struct {
 		typ      ntype
@@ -24,7 +24,7 @@ type (
 		children children
 		handler  HandlerFunc
 		pnames   []string
-		echo     *Echo
+		vodka    *Vodka
 	}
 	ntype    uint8
 	children []*node
@@ -36,7 +36,7 @@ const (
 	mtype
 )
 
-func NewRouter(e *Echo) *Router {
+func NewRouter(e *Vodka) *Router {
 	return &Router{
 		connectTree: new(node),
 		deleteTree:  new(node),
@@ -48,11 +48,11 @@ func NewRouter(e *Echo) *Router {
 		putTree:     new(node),
 		traceTree:   new(node),
 		routes:      []Route{},
-		echo:        e,
+		vodka:       e,
 	}
 }
 
-func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
+func (r *Router) Add(method, path string, h HandlerFunc, e *Vodka) {
 	pnames := []string{} // Param names
 
 	for i, l := 0, len(path); i < l; i++ {
@@ -83,7 +83,7 @@ func (r *Router) Add(method, path string, h HandlerFunc, e *Echo) {
 	r.insert(method, path, h, stype, pnames, e)
 }
 
-func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, e *Echo) {
+func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []string, e *Vodka) {
 	// Adjust max param
 	l := len(pnames)
 	if *e.maxParam < l {
@@ -92,7 +92,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 
 	cn := r.findTree(method) // Current node as root
 	if cn == nil {
-		panic("echo => invalid method")
+		panic("vodka => invalid method")
 	}
 	search := path
 
@@ -117,11 +117,11 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.typ = t
 				cn.handler = h
 				cn.pnames = pnames
-				cn.echo = e
+				cn.vodka = e
 			}
 		} else if l < pl {
 			// Split node
-			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.echo)
+			n := newNode(cn.typ, cn.prefix[l:], cn, cn.children, cn.handler, cn.pnames, cn.vodka)
 
 			// Reset parent node
 			cn.typ = stype
@@ -130,7 +130,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			cn.children = nil
 			cn.handler = nil
 			cn.pnames = nil
-			cn.echo = nil
+			cn.vodka = nil
 
 			cn.addChild(n)
 
@@ -139,7 +139,7 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 				cn.typ = t
 				cn.handler = h
 				cn.pnames = pnames
-				cn.echo = e
+				cn.vodka = e
 			} else {
 				// Create child node
 				n = newNode(t, search[l:], cn, nil, h, pnames, e)
@@ -161,14 +161,14 @@ func (r *Router) insert(method, path string, h HandlerFunc, t ntype, pnames []st
 			if h != nil {
 				cn.handler = h
 				cn.pnames = pnames
-				cn.echo = e
+				cn.vodka = e
 			}
 		}
 		return
 	}
 }
 
-func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, e *Echo) *node {
+func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []string, e *Vodka) *node {
 	return &node{
 		typ:      t,
 		label:    pre[0],
@@ -177,7 +177,7 @@ func newNode(t ntype, pre string, p *node, c children, h HandlerFunc, pnames []s
 		children: c,
 		handler:  h,
 		pnames:   pnames,
-		echo:     e,
+		vodka:    e,
 	}
 }
 
@@ -275,7 +275,7 @@ func (r *Router) findTree(method string) (n *node) {
 	return
 }
 
-func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo) {
+func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Vodka) {
 	h = notFoundHandler
 	cn := r.findTree(method) // Current node as root
 	if cn == nil {
@@ -301,7 +301,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 				// Found
 				ctx.pnames = cn.pnames
 				h = cn.handler
-				e = cn.echo
+				e = cn.vodka
 			}
 			return
 		}
@@ -397,11 +397,11 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Echo
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	c := r.echo.pool.Get().(*Context)
+	c := r.vodka.pool.Get().(*Context)
 	h, _ := r.Find(req.Method, req.URL.Path, c)
-	c.reset(req, w, r.echo)
+	c.reset(req, w, r.vodka)
 	if err := h(c); err != nil {
-		r.echo.httpErrorHandler(err, c)
+		r.vodka.httpErrorHandler(err, c)
 	}
-	r.echo.pool.Put(c)
+	r.vodka.pool.Put(c)
 }

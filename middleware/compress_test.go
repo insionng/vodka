@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo"
-	"github.com/stretchr/testify/assert"
+	"github.com/insionng/testify/assert"
+	"github.com/insionng/vodka"
 )
 
 type closeNotifyingRecorder struct {
@@ -33,10 +33,10 @@ func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
 }
 
 func TestGzip(t *testing.T) {
-	req, _ := http.NewRequest(echo.GET, "/", nil)
+	req, _ := http.NewRequest(vodka.GET, "/", nil)
 	rec := httptest.NewRecorder()
-	c := echo.NewContext(req, echo.NewResponse(rec), echo.New())
-	h := func(c *echo.Context) error {
+	c := vodka.NewContext(req, vodka.NewResponse(rec), vodka.New())
+	h := func(c *vodka.Context) error {
 		c.Response().Write([]byte("test")) // For Content-Type sniffing
 		return nil
 	}
@@ -46,16 +46,16 @@ func TestGzip(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "test", rec.Body.String())
 
-	req, _ = http.NewRequest(echo.GET, "/", nil)
-	req.Header.Set(echo.AcceptEncoding, "gzip")
+	req, _ = http.NewRequest(vodka.GET, "/", nil)
+	req.Header.Set(vodka.AcceptEncoding, "gzip")
 	rec = httptest.NewRecorder()
-	c = echo.NewContext(req, echo.NewResponse(rec), echo.New())
+	c = vodka.NewContext(req, vodka.NewResponse(rec), vodka.New())
 
 	// Gzip
 	Gzip()(h)(c)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "gzip", rec.Header().Get(echo.ContentEncoding))
-	assert.Contains(t, rec.Header().Get(echo.ContentType), echo.TextPlain)
+	assert.Equal(t, "gzip", rec.Header().Get(vodka.ContentEncoding))
+	assert.Contains(t, rec.Header().Get(vodka.ContentType), vodka.TextPlain)
 	r, err := gzip.NewReader(rec.Body)
 	defer r.Close()
 	if assert.NoError(t, err) {

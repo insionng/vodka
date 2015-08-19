@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/labstack/echo"
+	"github.com/insionng/vodka"
 )
 
 type (
@@ -19,8 +19,8 @@ type (
 )
 
 func (w gzipWriter) Write(b []byte) (int, error) {
-	if w.Header().Get(echo.ContentType) == "" {
-		w.Header().Set(echo.ContentType, http.DetectContentType(b))
+	if w.Header().Get(vodka.ContentType) == "" {
+		w.Header().Set(vodka.ContentType, http.DetectContentType(b))
 	}
 	return w.Writer.Write(b)
 }
@@ -39,17 +39,17 @@ func (w *gzipWriter) CloseNotify() <-chan bool {
 
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
-func Gzip() echo.MiddlewareFunc {
+func Gzip() vodka.MiddlewareFunc {
 	scheme := "gzip"
 
-	return func(h echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
-			c.Response().Header().Add(echo.Vary, echo.AcceptEncoding)
-			if strings.Contains(c.Request().Header.Get(echo.AcceptEncoding), scheme) {
+	return func(h vodka.HandlerFunc) vodka.HandlerFunc {
+		return func(c *vodka.Context) error {
+			c.Response().Header().Add(vodka.Vary, vodka.AcceptEncoding)
+			if strings.Contains(c.Request().Header.Get(vodka.AcceptEncoding), scheme) {
 				w := gzip.NewWriter(c.Response().Writer())
 				defer w.Close()
 				gw := gzipWriter{Writer: w, ResponseWriter: c.Response().Writer()}
-				c.Response().Header().Set(echo.ContentEncoding, scheme)
+				c.Response().Header().Set(vodka.ContentEncoding, scheme)
 				c.Response().SetWriter(gw)
 			}
 			if err := h(c); err != nil {

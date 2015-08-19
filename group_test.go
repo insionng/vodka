@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import "testing"
 

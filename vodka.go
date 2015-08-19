@@ -1,4 +1,4 @@
-package echo
+package vodka
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ import (
 )
 
 type (
-	Echo struct {
+	Vodka struct {
 		prefix                  string
 		middleware              []MiddlewareFunc
 		http2                   bool
@@ -148,9 +148,9 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("echo ⇒ unsupported media type")
-	RendererNotRegistered = errors.New("echo ⇒ renderer not registered")
-	InvalidRedirectCode   = errors.New("echo ⇒ invalid redirect status code")
+	UnsupportedMediaType  = errors.New("vodka ⇒ unsupported media type")
+	RendererNotRegistered = errors.New("vodka ⇒ renderer not registered")
+	InvalidRedirectCode   = errors.New("vodka ⇒ invalid redirect status code")
 
 	//----------------
 	// Error handlers
@@ -165,9 +165,9 @@ var (
 	}
 )
 
-// New creates an instance of Echo.
-func New() (e *Echo) {
-	e = &Echo{maxParam: new(int)}
+// New creates an instance of Vodka.
+func New() (e *Vodka) {
+	e = &Vodka{maxParam: new(int)}
 	e.pool.New = func() interface{} {
 		return NewContext(nil, new(Response), e)
 	}
@@ -202,12 +202,12 @@ func New() (e *Echo) {
 }
 
 // Router returns router.
-func (e *Echo) Router() *Router {
+func (e *Vodka) Router() *Router {
 	return e.router
 }
 
 // ColoredLog enable/disable colored log.
-func (e *Echo) ColoredLog(on bool) {
+func (e *Vodka) ColoredLog(on bool) {
 	if on {
 		color.Enable()
 	} else {
@@ -216,94 +216,94 @@ func (e *Echo) ColoredLog(on bool) {
 }
 
 // HTTP2 enable/disable HTTP2 support.
-func (e *Echo) HTTP2(on bool) {
+func (e *Vodka) HTTP2(on bool) {
 	e.http2 = on
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
-func (e *Echo) DefaultHTTPErrorHandler(err error, c *Context) {
+func (e *Vodka) DefaultHTTPErrorHandler(err error, c *Context) {
 	e.defaultHTTPErrorHandler(err, c)
 }
 
-// SetHTTPErrorHandler registers a custom Echo.HTTPErrorHandler.
-func (e *Echo) SetHTTPErrorHandler(h HTTPErrorHandler) {
+// SetHTTPErrorHandler registers a custom Vodka.HTTPErrorHandler.
+func (e *Vodka) SetHTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
 }
 
 // SetBinder registers a custom binder. It's invoked by Context.Bind().
-func (e *Echo) SetBinder(b Binder) {
+func (e *Vodka) SetBinder(b Binder) {
 	e.binder = b
 }
 
 // SetRenderer registers an HTML template renderer. It's invoked by Context.Render().
-func (e *Echo) SetRenderer(r Renderer) {
+func (e *Vodka) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
 // SetDebug sets debug mode.
-func (e *Echo) SetDebug(on bool) {
+func (e *Vodka) SetDebug(on bool) {
 	e.debug = on
 }
 
 // Debug returns debug mode.
-func (e *Echo) Debug() bool {
+func (e *Vodka) Debug() bool {
 	return e.debug
 }
 
 // Use adds handler to the middleware chain.
-func (e *Echo) Use(m ...Middleware) {
+func (e *Vodka) Use(m ...Middleware) {
 	for _, h := range m {
 		e.middleware = append(e.middleware, wrapMiddleware(h))
 	}
 }
 
 // Connect adds a CONNECT route > handler to the router.
-func (e *Echo) Connect(path string, h Handler) {
+func (e *Vodka) Connect(path string, h Handler) {
 	e.add(CONNECT, path, h)
 }
 
 // Delete adds a DELETE route > handler to the router.
-func (e *Echo) Delete(path string, h Handler) {
+func (e *Vodka) Delete(path string, h Handler) {
 	e.add(DELETE, path, h)
 }
 
 // Get adds a GET route > handler to the router.
-func (e *Echo) Get(path string, h Handler) {
+func (e *Vodka) Get(path string, h Handler) {
 	e.add(GET, path, h)
 }
 
 // Head adds a HEAD route > handler to the router.
-func (e *Echo) Head(path string, h Handler) {
+func (e *Vodka) Head(path string, h Handler) {
 	e.add(HEAD, path, h)
 }
 
 // Options adds an OPTIONS route > handler to the router.
-func (e *Echo) Options(path string, h Handler) {
+func (e *Vodka) Options(path string, h Handler) {
 	e.add(OPTIONS, path, h)
 }
 
 // Patch adds a PATCH route > handler to the router.
-func (e *Echo) Patch(path string, h Handler) {
+func (e *Vodka) Patch(path string, h Handler) {
 	e.add(PATCH, path, h)
 }
 
 // Post adds a POST route > handler to the router.
-func (e *Echo) Post(path string, h Handler) {
+func (e *Vodka) Post(path string, h Handler) {
 	e.add(POST, path, h)
 }
 
 // Put adds a PUT route > handler to the router.
-func (e *Echo) Put(path string, h Handler) {
+func (e *Vodka) Put(path string, h Handler) {
 	e.add(PUT, path, h)
 }
 
 // Trace adds a TRACE route > handler to the router.
-func (e *Echo) Trace(path string, h Handler) {
+func (e *Vodka) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
 }
 
 // WebSocket adds a WebSocket route > handler to the router.
-func (e *Echo) WebSocket(path string, h HandlerFunc) {
+func (e *Vodka) WebSocket(path string, h HandlerFunc) {
 	e.Get(path, func(c *Context) (err error) {
 		wss := websocket.Server{
 			Handler: func(ws *websocket.Conn) {
@@ -317,7 +317,7 @@ func (e *Echo) WebSocket(path string, h HandlerFunc) {
 	})
 }
 
-func (e *Echo) add(method, path string, h Handler) {
+func (e *Vodka) add(method, path string, h Handler) {
 	path = e.prefix + path
 	e.router.Add(method, path, wrapHandler(h), e)
 	r := Route{
@@ -329,29 +329,29 @@ func (e *Echo) add(method, path string, h Handler) {
 }
 
 // Index serves index file.
-func (e *Echo) Index(file string) {
+func (e *Vodka) Index(file string) {
 	e.ServeFile("/", file)
 }
 
 // Favicon serves the default favicon - GET /favicon.ico.
-func (e *Echo) Favicon(file string) {
+func (e *Vodka) Favicon(file string) {
 	e.ServeFile("/favicon.ico", file)
 }
 
-// Static serves static files from a directory. It's an alias for `Echo.ServeDir`
-func (e *Echo) Static(path, dir string) {
+// Static serves static files from a directory. It's an alias for `Vodka.ServeDir`
+func (e *Vodka) Static(path, dir string) {
 	e.ServeDir(path, dir)
 }
 
 // ServeDir serves files from a directory.
-func (e *Echo) ServeDir(path, dir string) {
+func (e *Vodka) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
 		return serveFile(dir, c.P(0), c) // Param `_name`
 	})
 }
 
 // ServeFile serves a file.
-func (e *Echo) ServeFile(path, file string) {
+func (e *Vodka) ServeFile(path, file string) {
 	e.Get(path, func(c *Context) error {
 		dir, file := spath.Split(file)
 		return serveFile(dir, file, c)
@@ -381,18 +381,18 @@ func serveFile(dir, file string, c *Context) error {
 
 // Group creates a new sub router with prefix. It inherits all properties from
 // the parent. Passing middleware overrides parent middleware.
-func (e *Echo) Group(prefix string, m ...Middleware) *Group {
+func (e *Vodka) Group(prefix string, m ...Middleware) *Group {
 	g := &Group{*e}
-	g.echo.prefix += prefix
+	g.vodka.prefix += prefix
 	if len(m) > 0 {
-		g.echo.middleware = nil
+		g.vodka.middleware = nil
 		g.Use(m...)
 	}
 	return g
 }
 
 // URI generates a URI from handler.
-func (e *Echo) URI(h Handler, params ...interface{}) string {
+func (e *Vodka) URI(h Handler, params ...interface{}) string {
 	uri := new(bytes.Buffer)
 	pl := len(params)
 	n := 0
@@ -417,21 +417,21 @@ func (e *Echo) URI(h Handler, params ...interface{}) string {
 }
 
 // URL is an alias for `URI` function.
-func (e *Echo) URL(h Handler, params ...interface{}) string {
+func (e *Vodka) URL(h Handler, params ...interface{}) string {
 	return e.URI(h, params...)
 }
 
 // Routes returns the registered routes.
-func (e *Echo) Routes() []Route {
+func (e *Vodka) Routes() []Route {
 	return e.router.routes
 }
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
-func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (e *Vodka) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := e.pool.Get().(*Context)
-	h, echo := e.router.Find(r.Method, r.URL.Path, c)
-	if echo != nil {
-		e = echo
+	h, vodka := e.router.Find(r.Method, r.URL.Path, c)
+	if vodka != nil {
+		e = vodka
 	}
 	c.reset(r, w, e)
 
@@ -449,7 +449,7 @@ func (e *Echo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Server returns the internal *http.Server.
-func (e *Echo) Server(addr string) *http.Server {
+func (e *Vodka) Server(addr string) *http.Server {
 	s := &http.Server{Addr: addr}
 	s.Handler = e
 	if e.http2 {
@@ -459,34 +459,34 @@ func (e *Echo) Server(addr string) *http.Server {
 }
 
 // Run runs a server.
-func (e *Echo) Run(addr string) {
+func (e *Vodka) Run(addr string) {
 	s := e.Server(addr)
 	e.run(s)
 }
 
 // RunTLS runs a server with TLS configuration.
-func (e *Echo) RunTLS(addr, certFile, keyFile string) {
+func (e *Vodka) RunTLS(addr, certFile, keyFile string) {
 	s := e.Server(addr)
 	e.run(s, certFile, keyFile)
 }
 
 // RunServer runs a custom server.
-func (e *Echo) RunServer(s *http.Server) {
+func (e *Vodka) RunServer(s *http.Server) {
 	e.run(s)
 }
 
 // RunTLSServer runs a custom server with TLS configuration.
-func (e *Echo) RunTLSServer(s *http.Server, certFile, keyFile string) {
+func (e *Vodka) RunTLSServer(s *http.Server, certFile, keyFile string) {
 	e.run(s, certFile, keyFile)
 }
 
-func (e *Echo) run(s *http.Server, files ...string) {
+func (e *Vodka) run(s *http.Server, files ...string) {
 	if len(files) == 0 {
 		log.Fatal(s.ListenAndServe())
 	} else if len(files) == 2 {
 		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
-		log.Fatal("echo => invalid TLS configuration")
+		log.Fatal("vodka => invalid TLS configuration")
 	}
 }
 
@@ -541,7 +541,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("echo => unknown middleware")
+		panic("vodka => unknown middleware")
 	}
 }
 
@@ -587,7 +587,7 @@ func wrapHandler(h Handler) HandlerFunc {
 			return nil
 		}
 	default:
-		panic("echo => unknown handler")
+		panic("vodka => unknown handler")
 	}
 }
 

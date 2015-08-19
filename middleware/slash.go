@@ -1,11 +1,11 @@
 package middleware
 
-import "github.com/labstack/echo"
+import "github.com/insionng/vodka"
 
 // StripTrailingSlash returns a middleware which removes trailing slash from request
 // path.
-func StripTrailingSlash() echo.HandlerFunc {
-	return func(c *echo.Context) error {
+func StripTrailingSlash() vodka.HandlerFunc {
+	return func(c *vodka.Context) error {
 		p := c.Request().URL.Path
 		l := len(p)
 		if p[l-1] == '/' {

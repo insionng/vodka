@@ -4,13 +4,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/insionng/vodka"
 	"github.com/labstack/gommon/color"
 )
 
-func Logger() echo.MiddlewareFunc {
-	return func(h echo.HandlerFunc) echo.HandlerFunc {
-		return func(c *echo.Context) error {
+func Logger() vodka.MiddlewareFunc {
+	return func(h vodka.HandlerFunc) vodka.HandlerFunc {
+		return func(c *vodka.Context) error {
 			start := time.Now()
 			if err := h(c); err != nil {
 				c.Error(err)
