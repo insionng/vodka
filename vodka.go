@@ -8,9 +8,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	spath "path"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -499,14 +501,62 @@ func (e *Vodka) Server(addr string) *http.Server {
 	return s
 }
 
+func GetDefaultListenInfo() (string, int) {
+	host := os.Getenv("HOST")
+	if len(host) == 0 {
+		host = "0.0.0.0"
+	}
+	_port, _ := strconv.ParseInt(os.Getenv("PORT"), 10, 32)
+	port := int(_port)
+	if port == 0 {
+		port = 8000
+	}
+	return host, port
+}
+
+func GetAddress(args ...interface{}) string {
+	host, port := GetDefaultListenInfo()
+
+	if len(args) == 1 {
+		switch arg := args[0].(type) {
+		case string:
+			addrs := strings.Split(args[0].(string), ":")
+			if len(addrs) == 1 {
+				host = addrs[0]
+			} else if len(addrs) >= 2 {
+				host = addrs[0]
+				_port, _ := strconv.ParseInt(addrs[1], 10, 0)
+				port = int(_port)
+			}
+		case int:
+			port = arg
+		}
+	} else if len(args) >= 2 {
+		if arg, ok := args[0].(string); ok {
+			host = arg
+		}
+		if arg, ok := args[1].(int); ok {
+			port = arg
+		}
+	}
+
+	addr := host + ":" + strconv.FormatInt(int64(port), 10)
+
+	return addr
+}
+
 // Run runs a server.
-func (e *Vodka) Run(addr string) {
+func (e *Vodka) Run(args ...interface{}) {
+	addr := GetAddress(args...)
+	fmt.Printf("[Vodka] Listening on http://%s\n", addr)
 	s := e.Server(addr)
 	e.run(s)
 }
 
 // RunTLS runs a server with TLS configuration.
-func (e *Vodka) RunTLS(addr, certFile, keyFile string) {
+func (e *Vodka) RunTLS(certFile, keyFile string, args ...interface{}) {
+	addr := GetAddress(args...)
+	fmt.Printf("[Vodka] Listening on https://%s\n", addr)
 	s := e.Server(addr)
 	e.run(s, certFile, keyFile)
 }
