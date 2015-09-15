@@ -17,17 +17,17 @@ A fast and unfancy micro web framework for Golang.
 
 - Fast HTTP router which smartly prioritize routes.
 - Extensible middleware, supports:
-	- `echo.MiddlewareFunc`
-	- `func(echo.HandlerFunc) echo.HandlerFunc`
-	- `echo.HandlerFunc`
-	- `func(*echo.Context) error`
+	- `vodka.MiddlewareFunc`
+	- `func(vodka.HandlerFunc) vodka.HandlerFunc`
+	- `vodka.HandlerFunc`
+	- `func(*vodka.Context) error`
 	- `func(http.Handler) http.Handler`
 	- `http.Handler`
 	- `http.HandlerFunc`
 	- `func(http.ResponseWriter, *http.Request)`
 - Extensible handler, supports:
-    - `echo.HandlerFunc`
-    - `func(*echo.Context) error`
+    - `vodka.HandlerFunc`
+    - `func(*vodka.Context) error`
     - `http.Handler`
     - `http.HandlerFunc`
     - `func(http.ResponseWriter, *http.Request)`

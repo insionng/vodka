@@ -8,8 +8,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/labstack/echo"
-	mw "github.com/labstack/echo/middleware"
+	"github.com/insionng/vodka"
+	mw "github.com/insionng/vodka/middleware"
 )
 
 type Hosts map[string]http.Handler
@@ -30,13 +30,13 @@ func main() {
 	// API
 	//-----
 
-	api := echo.New()
+	api := vodka.New()
 	api.Use(mw.Logger())
 	api.Use(mw.Recover())
 
 	hosts["api.localhost:1323"] = api
 
-	api.Get("/", func(c *echo.Context) error {
+	api.Get("/", func(c *vodka.Context) error {
 		return c.String(http.StatusOK, "API")
 	})
 
@@ -44,13 +44,13 @@ func main() {
 	// Blog
 	//------
 
-	blog := echo.New()
+	blog := vodka.New()
 	blog.Use(mw.Logger())
 	blog.Use(mw.Recover())
 
 	hosts["blog.localhost:1323"] = blog
 
-	blog.Get("/", func(c *echo.Context) error {
+	blog.Get("/", func(c *vodka.Context) error {
 		return c.String(http.StatusOK, "Blog")
 	})
 
@@ -58,13 +58,13 @@ func main() {
 	// Website
 	//---------
 
-	site := echo.New()
+	site := vodka.New()
 	site.Use(mw.Logger())
 	site.Use(mw.Recover())
 
 	hosts["localhost:1323"] = site
 
-	site.Get("/", func(c *echo.Context) error {
+	site.Get("/", func(c *vodka.Context) error {
 		return c.String(http.StatusOK, "Welcome!")
 	})
 
@@ -72,4 +72,4 @@ func main() {
 }
 ```
 
-## [Source Code](https://github.com/labstack/echo/blob/master/recipes/subdomains)
+## [Source Code](https://github.com/insionng/vodka/blob/master/recipes/subdomains)
