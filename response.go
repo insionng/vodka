@@ -37,7 +37,7 @@ func (r *Response) Writer() http.ResponseWriter {
 func (r *Response) WriteHeader(code int) {
 	if r.committed {
 		// TODO: Warning
-		log.Printf("vodka => %s", color.Yellow("response already committed"))
+		log.Printf("vodka > %s", color.Yellow("response already committed"))
 		return
 	}
 	r.status = code

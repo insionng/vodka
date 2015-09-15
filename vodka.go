@@ -162,14 +162,22 @@ var (
 	// Errors
 	//--------
 
-	UnsupportedMediaType  = errors.New("vodka ⇒ unsupported media type")
-	RendererNotRegistered = errors.New("vodka ⇒ renderer not registered")
-	InvalidRedirectCode   = errors.New("vodka ⇒ invalid redirect status code")
+	UnsupportedMediaType  = errors.New("vodka > unsupported media type")
+	RendererNotRegistered = errors.New("vodka > renderer not registered")
+	InvalidRedirectCode   = errors.New("vodka > invalid redirect status code")
 
 	//----------------
 	// Error handlers
 	//----------------
-
+	// methodNotAllowedHandler - handler to respond with a http.StatusMethodNotAllowed status
+	// which is applicable when the route is correct, but the method for the route isn't allowed
+	// for the route
+	methodNotAllowedHandler = func(c *Context, allowedMethods ...string) func(c *Context) error {
+		return func(c *Context) error {
+			c.response.Header().Add("Allow", strings.Join(allowedMethods, ", "))
+			return NewHTTPError(http.StatusMethodNotAllowed)
+		}
+	}
 	notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
 	}
@@ -519,7 +527,7 @@ func (e *Vodka) run(s *http.Server, files ...string) {
 	} else if len(files) == 2 {
 		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
 	} else {
-		log.Fatal("vodka => invalid TLS configuration")
+		log.Fatal("vodka > invalid TLS configuration")
 	}
 }
 
@@ -574,7 +582,7 @@ func wrapMiddleware(m Middleware) MiddlewareFunc {
 	case func(http.ResponseWriter, *http.Request):
 		return wrapHTTPHandlerFuncMW(m)
 	default:
-		panic("vodka => unknown middleware")
+		panic("vodka > unknown middleware")
 	}
 }
 
@@ -620,7 +628,7 @@ func wrapHandler(h Handler) HandlerFunc {
 			return nil
 		}
 	default:
-		panic("vodka => unknown handler")
+		panic("vodka > unknown handler")
 	}
 }
 
