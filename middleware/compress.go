@@ -3,12 +3,13 @@ package middleware
 import (
 	"bufio"
 	"compress/gzip"
+	"github.com/insionng/vodka"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
-
-	"github.com/insionng/vodka"
+	"sync"
 )
 
 type (
@@ -37,6 +38,12 @@ func (w *gzipWriter) CloseNotify() <-chan bool {
 	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
+var writerPool = sync.Pool{
+	New: func() interface{} {
+		return gzip.NewWriter(ioutil.Discard)
+	},
+}
+
 // Gzip returns a middleware which compresses HTTP response using gzip compression
 // scheme.
 func Gzip() vodka.MiddlewareFunc {
@@ -46,8 +53,12 @@ func Gzip() vodka.MiddlewareFunc {
 		return func(c *vodka.Context) error {
 			c.Response().Header().Add(vodka.Vary, vodka.AcceptEncoding)
 			if strings.Contains(c.Request().Header.Get(vodka.AcceptEncoding), scheme) {
-				w := gzip.NewWriter(c.Response().Writer())
-				defer w.Close()
+				w := writerPool.Get().(*gzip.Writer)
+				w.Reset(c.Response().Writer())
+				defer func() {
+					w.Close()
+					writerPool.Put(w)
+				}()
 				gw := gzipWriter{Writer: w, ResponseWriter: c.Response().Writer()}
 				c.Response().Header().Set(vodka.ContentEncoding, scheme)
 				c.Response().SetWriter(gw)

@@ -36,17 +36,20 @@ func TestBasicAuth(t *testing.T) {
 	req.Header.Set(vodka.Authorization, auth)
 	he := ba(c).(*vodka.HTTPError)
 	assert.Equal(t, http.StatusUnauthorized, he.Code())
+	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(vodka.WWWAuthenticate))
 
 	// Empty Authorization header
 	req.Header.Set(vodka.Authorization, "")
 	he = ba(c).(*vodka.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusUnauthorized, he.Code())
+	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(vodka.WWWAuthenticate))
 
 	// Invalid Authorization header
 	auth = base64.StdEncoding.EncodeToString([]byte("invalid"))
 	req.Header.Set(vodka.Authorization, auth)
 	he = ba(c).(*vodka.HTTPError)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusUnauthorized, he.Code())
+	assert.Equal(t, Basic+" realm=Restricted", rec.Header().Get(vodka.WWWAuthenticate))
 
 	// WebSocket
 	c.Request().Header.Set(vodka.Upgrade, vodka.WebSocket)

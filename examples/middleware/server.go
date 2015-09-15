@@ -9,7 +9,7 @@ import (
 
 // Handler
 func hello(c *vodka.Context) error {
-	return c.String(http.StatusOK, "Hello, Vodka!\n")
+	return c.String(http.StatusOK, "Hello, World!\n")
 }
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	e := vodka.New()
 
 	// Debug mode
-	e.SetDebug(true)
+	e.Debug()
 
 	//------------
 	// Middleware
@@ -36,16 +36,6 @@ func main() {
 		}
 		return false
 	}))
-
-	//-------
-	// Slash
-	//-------
-
-	e.Use(mw.StripTrailingSlash())
-
-	// or
-
-	//	e.Use(mw.RedirectToSlash())
 
 	// Gzip
 	e.Use(mw.Gzip())

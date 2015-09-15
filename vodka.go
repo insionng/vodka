@@ -34,6 +34,7 @@ type (
 		renderer                Renderer
 		pool                    sync.Pool
 		debug                   bool
+		stripTrailingSlash      bool
 		router                  *Router
 	}
 
@@ -133,6 +134,7 @@ const (
 	Location           = "Location"
 	Upgrade            = "Upgrade"
 	Vary               = "Vary"
+	WWWAuthenticate    = "WWW-Authenticate"
 
 	//-----------
 	// Protocols
@@ -144,6 +146,18 @@ const (
 )
 
 var (
+	methods = [...]string{
+		CONNECT,
+		DELETE,
+		GET,
+		HEAD,
+		OPTIONS,
+		PATCH,
+		POST,
+		PUT,
+		TRACE,
+	}
+
 	//--------
 	// Errors
 	//--------
@@ -178,9 +192,9 @@ func New() (e *Vodka) {
 	//----------
 
 	if runtime.GOOS == "windows" {
-		e.ColoredLog(false)
+		e.DisableColoredLog()
 	}
-	e.HTTP2(false)
+	e.HTTP2()
 	e.defaultHTTPErrorHandler = func(err error, c *Context) {
 		code := http.StatusInternalServerError
 		msg := http.StatusText(code)
@@ -206,18 +220,14 @@ func (e *Vodka) Router() *Router {
 	return e.router
 }
 
-// ColoredLog enable/disable colored log.
-func (e *Vodka) ColoredLog(on bool) {
-	if on {
-		color.Enable()
-	} else {
-		color.Disable()
-	}
+// DisableColoredLog disables colored log.
+func (e *Vodka) DisableColoredLog() {
+	color.Disable()
 }
 
-// HTTP2 enable/disable HTTP2 support.
-func (e *Vodka) HTTP2(on bool) {
-	e.http2 = on
+// HTTP2 enables HTTP2 support.
+func (e *Vodka) HTTP2() {
+	e.http2 = true
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
@@ -240,14 +250,19 @@ func (e *Vodka) SetRenderer(r Renderer) {
 	e.renderer = r
 }
 
-// SetDebug sets debug mode.
+// SetDebug enables/disables debug mode.
 func (e *Vodka) SetDebug(on bool) {
 	e.debug = on
 }
 
-// Debug returns debug mode.
+// Debug returns debug mode (enabled or disabled).
 func (e *Vodka) Debug() bool {
 	return e.debug
+}
+
+// StripTrailingSlash enables removing trailing slash from the request path.
+func (e *Vodka) StripTrailingSlash() {
+	e.stripTrailingSlash = true
 }
 
 // Use adds handler to the middleware chain.
@@ -300,6 +315,20 @@ func (e *Vodka) Put(path string, h Handler) {
 // Trace adds a TRACE route > handler to the router.
 func (e *Vodka) Trace(path string, h Handler) {
 	e.add(TRACE, path, h)
+}
+
+// Any adds a route > handler to the router for all HTTP methods.
+func (e *Vodka) Any(path string, h Handler) {
+	for _, m := range methods {
+		e.add(m, path, h)
+	}
+}
+
+// Match adds a route > handler to the router for multiple HTTP methods provided.
+func (e *Vodka) Match(methods []string, path string, h Handler) {
+	for _, m := range methods {
+		e.add(m, path, h)
+	}
 }
 
 // WebSocket adds a WebSocket route > handler to the router.
@@ -387,6 +416,10 @@ func (e *Vodka) Group(prefix string, m ...Middleware) *Group {
 	if len(m) > 0 {
 		g.vodka.middleware = nil
 		g.Use(m...)
+	} else {
+		mw := make([]MiddlewareFunc, len(g.vodka.middleware))
+		copy(mw, g.vodka.middleware)
+		g.vodka.middleware = mw
 	}
 	return g
 }

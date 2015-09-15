@@ -34,7 +34,7 @@ func TestVodka(t *testing.T) {
 
 	// Debug
 	e.SetDebug(true)
-	assert.True(t, e.Debug())
+	assert.True(t, e.debug)
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
@@ -246,9 +246,25 @@ func TestVodkaTrace(t *testing.T) {
 	testMethod(t, TRACE, "/", e)
 }
 
+func TestVodkaAny(t *testing.T) { // JFC
+	e := New()
+	e.Any("/", func(c *Context) error {
+		return c.String(http.StatusOK, "Any")
+	})
+}
+
+func TestVodkaMatch(t *testing.T) { // JFC
+	e := New()
+	e.Match([]string{GET, POST}, "/", func(c *Context) error {
+		return c.String(http.StatusOK, "Match")
+	})
+}
+
 func TestVodkaWebSocket(t *testing.T) {
+	fmt.Println("TestVodkaWebSocket start")
 	e := New()
 	e.WebSocket("/ws", func(c *Context) error {
+		fmt.Println("Got WebSocket Request!")
 		c.socket.Write([]byte("test"))
 		return nil
 	})
@@ -258,13 +274,17 @@ func TestVodkaWebSocket(t *testing.T) {
 	origin := "http://localhost"
 	url := fmt.Sprintf("ws://%s/ws", addr)
 	ws, err := websocket.Dial(url, "", origin)
+
 	if assert.NoError(t, err) {
 		ws.Write([]byte("test"))
 		defer ws.Close()
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(ws)
 		assert.Equal(t, "test", buf.String())
+		fmt.Println("Return buf.String():", buf.String())
 	}
+
+	fmt.Println("TestVodkaWebSocket end")
 }
 
 func TestVodkaURL(t *testing.T) {
@@ -387,6 +407,15 @@ func TestVodkaServer(t *testing.T) {
 	e := New()
 	s := e.Server(":1323")
 	assert.IsType(t, &http.Server{}, s)
+}
+
+func TestStripTrailingSlash(t *testing.T) {
+	e := New()
+	e.StripTrailingSlash()
+	r, _ := http.NewRequest(GET, "/users/", nil)
+	w := httptest.NewRecorder()
+	e.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func testMethod(t *testing.T, method, path string, e *Vodka) {

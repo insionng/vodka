@@ -282,14 +282,22 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Vodk
 		h = badRequestHandler
 		return
 	}
-	search := path
+
+	// Strip trailing slash
+	if r.vodka.stripTrailingSlash {
+		l := len(path)
+		if path[l-1] == '/' {
+			path = path[:l-1]
+		}
+	}
 
 	var (
-		c  *node  // Child node
-		n  int    // Param counter
-		nt ntype  // Next type
-		nn *node  // Next node
-		ns string // Next search
+		search = path
+		c      *node  // Child node
+		n      int    // Param counter
+		nt     ntype  // Next type
+		nn     *node  // Next node
+		ns     string // Next search
 	)
 
 	// TODO: Check empty path???
@@ -339,7 +347,7 @@ func (r *Router) Find(method, path string, ctx *Context) (h HandlerFunc, e *Vodk
 		}
 
 		if search == "" {
-			// TODO: Needs improvement 待办事项：需要改进
+			// TODO: Needs improvement
 			if cn.findChildWithType(mtype) == nil {
 				continue
 			}

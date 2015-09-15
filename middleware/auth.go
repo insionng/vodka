@@ -18,7 +18,6 @@ const (
 // BasicAuth returns an HTTP basic authentication middleware.
 //
 // For valid credentials it calls the next handler.
-// For invalid Authorization header it sends "404 - Bad Request" response.
 // For invalid credentials, it sends "401 - Unauthorized" response.
 func BasicAuth(fn BasicValidateFunc) vodka.HandlerFunc {
 	return func(c *vodka.Context) error {
@@ -29,7 +28,6 @@ func BasicAuth(fn BasicValidateFunc) vodka.HandlerFunc {
 
 		auth := c.Request().Header.Get(vodka.Authorization)
 		l := len(Basic)
-		he := vodka.NewHTTPError(http.StatusBadRequest)
 
 		if len(auth) > l+1 && auth[:l] == Basic {
 			b, err := base64.StdEncoding.DecodeString(auth[l+1:])
@@ -41,11 +39,11 @@ func BasicAuth(fn BasicValidateFunc) vodka.HandlerFunc {
 						if fn(cred[:i], cred[i+1:]) {
 							return nil
 						}
-						he.SetCode(http.StatusUnauthorized)
 					}
 				}
 			}
 		}
-		return he
+		c.Response().Header().Set(vodka.WWWAuthenticate, Basic+" realm=Restricted")
+		return vodka.NewHTTPError(http.StatusUnauthorized)
 	}
 }
