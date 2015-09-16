@@ -661,8 +661,9 @@ func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 }
 
 // wrapHandler wraps handler.
-func wrapHandler(h Handler) HandlerFunc {
-	switch h := h.(type) {
+func wrapHandler(handler Handler) HandlerFunc {
+
+	switch h := handler.(type) {
 	case HandlerFunc:
 		return h
 	case func(*Context) error:
@@ -677,8 +678,11 @@ func wrapHandler(h Handler) HandlerFunc {
 			h(c.response, c.request)
 			return nil
 		}
+
 	default:
-		panic("vodka > unknown handler")
+		{
+			panic("vodka > unknown handler")
+		}
 	}
 }
 
