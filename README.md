@@ -40,7 +40,7 @@ A fast and unfancy micro web framework for Golang.
     - JSONP
     - XML
     - File
-    - NoContent
+    - Status
     - Redirect
     - Error
 - Build-in support for:

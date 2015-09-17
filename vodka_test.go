@@ -359,7 +359,7 @@ func TestVodkaGroup(t *testing.T) {
 	g3 := e.Group("/group3")
 	g4 := g3.Group("/group4")
 	g4.Get("/", func(c *Context) error {
-		return c.NoContent(http.StatusOK)
+		return c.Status(http.StatusOK)
 	})
 
 	request(GET, "/users", e)

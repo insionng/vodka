@@ -157,10 +157,10 @@ func TestContext(t *testing.T) {
 		assert.Equal(t, 219885, rec.Body.Len())
 	}
 
-	// NoContent
+	// Status
 	rec = httptest.NewRecorder()
 	c = NewContext(req, NewResponse(rec), New())
-	c.NoContent(http.StatusOK)
+	c.Status(http.StatusOK)
 	assert.Equal(t, http.StatusOK, c.response.status)
 
 	// Redirect

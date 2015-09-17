@@ -48,6 +48,10 @@ func (g *Group) Trace(path string, h Handler) {
 	g.vodka.Trace(path, h)
 }
 
+func (g *Group) Any(path string, h Handler) {
+	g.vodka.Any(path, h)
+}
+
 func (g *Group) WebSocket(path string, h HandlerFunc) {
 	g.vodka.WebSocket(path, h)
 }

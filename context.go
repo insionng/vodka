@@ -182,8 +182,8 @@ func (c *Context) Binary(code int, t string, bytes []byte) error {
 	return err
 }
 
-// NoContent sends a response with no body and a status code.
-func (c *Context) NoContent(code int) error {
+// Status sends a response with no body and a status code.
+func (c *Context) Status(code int) error {
 	c.response.WriteHeader(code)
 	return nil
 }
