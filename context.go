@@ -64,18 +64,6 @@ func (c *Context) P(i int) (value string) {
 	return
 }
 
-// Param returns path parameter by name.
-func (c *Context) Param(name string) (value string) {
-	l := len(c.pnames)
-	for i, n := range c.pnames {
-		if n == name && i < l {
-			value = c.pvalues[i]
-			break
-		}
-	}
-	return
-}
-
 // Query returns query parameter by name.
 func (c *Context) Query(name string) string {
 	if c.query == nil {
