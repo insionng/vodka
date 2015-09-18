@@ -58,6 +58,29 @@ Community created packages for Vodka
 
 - [hello world](https://github.com/vodka-contrib/helloworld)
 
+## Tips
+
+Windows command:
+
+```
+set HOST=localhost
+set PORT=1987
+go build app.go && app.exe
+```
+
+Or Linux/Unix shell:
+
+```
+export HOST=localhost
+set PORT=1987
+go build app.go && app.exe
+```
+
+output:
+
+```
+[Vodka] Listening on http://localhost:1987
+```
 
 ## License
 MIT License
