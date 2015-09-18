@@ -11,7 +11,7 @@ import (
 
 func TestRecover(t *testing.T) {
 	e := vodka.New()
-	e.Debug()
+	e.SetDebug(true)
 	req, _ := http.NewRequest(vodka.GET, "/", nil)
 	rec := httptest.NewRecorder()
 	c := vodka.NewContext(req, vodka.NewResponse(rec), e)

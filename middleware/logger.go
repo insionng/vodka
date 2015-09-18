@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"log"
+	"net"
 	"time"
 
 	"github.com/insionng/vodka"
@@ -11,6 +12,15 @@ import (
 func Logger() vodka.MiddlewareFunc {
 	return func(h vodka.HandlerFunc) vodka.HandlerFunc {
 		return func(c *vodka.Context) error {
+
+			remoteAddr := c.Request().RemoteAddr
+			if realIP := c.Request().Header.Get("X-Real-IP"); realIP != "" {
+				remoteAddr = realIP
+			}
+			if realIP := c.Request().Header.Get("X-Forwarded-For"); realIP != "" {
+				remoteAddr = realIP
+			}
+
 			start := time.Now()
 			if err := h(c); err != nil {
 				c.Error(err)
@@ -33,6 +43,8 @@ func Logger() vodka.MiddlewareFunc {
 			case n >= 300:
 				code = color.Cyan(n)
 			}
+
+			remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
 
 			log.Printf("%s %s %s %s %d", method, path, code, stop.Sub(start), size)
 			return nil
