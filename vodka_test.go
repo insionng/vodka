@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"reflect"
+	"runtime"
 	"strings"
+	"testing"
 
 	"errors"
 
+	"github.com/insionng/vodka/libraries/labstack/gommon/color"
 	"github.com/insionng/vodka/libraries/net/websocket"
 	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
 )
@@ -22,6 +23,20 @@ type (
 		Name string `json:"name" xml:"name"`
 	}
 )
+
+func TestNewRuntimeGOOS(t *testing.T) {
+	changedColor := make(chan bool)
+	colorDisable = func() { changedColor <- true }
+	runtimeGOOS = "windows"
+	defer func() {
+		colorDisable = color.Disable
+		runtimeGOOS = runtime.GOOS
+	}()
+	go func() {
+		New()
+	}()
+	assert.True(t, <-changedColor)
+}
 
 func TestVodka(t *testing.T) {
 	e := New()
@@ -393,7 +408,7 @@ func TestVodkaBadRequest(t *testing.T) {
 	r, _ := http.NewRequest("INVALID", "/files", nil)
 	w := httptest.NewRecorder()
 	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestVodkaHTTPError(t *testing.T) {

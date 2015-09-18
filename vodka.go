@@ -171,15 +171,7 @@ var (
 	//----------------
 	// Error handlers
 	//----------------
-	// methodNotAllowedHandler - handler to respond with a http.StatusMethodNotAllowed status
-	// which is applicable when the route is correct, but the method for the route isn't allowed
-	// for the route
-	methodNotAllowedHandler = func(c *Context, allowedMethods ...string) func(c *Context) error {
-		return func(c *Context) error {
-			c.response.Header().Add("Allow", strings.Join(allowedMethods, ", "))
-			return NewHTTPError(http.StatusMethodNotAllowed)
-		}
-	}
+
 	notFoundHandler = func(c *Context) error {
 		return NewHTTPError(http.StatusNotFound)
 	}
@@ -188,6 +180,8 @@ var (
 		return NewHTTPError(http.StatusBadRequest)
 	}
 )
+
+var runtimeGOOS = runtime.GOOS
 
 // New creates an instance of Vodka.
 func New() (e *Vodka) {
@@ -201,7 +195,7 @@ func New() (e *Vodka) {
 	// Defaults
 	//----------
 
-	if runtime.GOOS == "windows" {
+	if runtimeGOOS == "windows" {
 		e.DisableColoredLog()
 	}
 	e.HTTP2()
@@ -230,9 +224,11 @@ func (e *Vodka) Router() *Router {
 	return e.router
 }
 
+var colorDisable = color.Disable
+
 // DisableColoredLog disables colored log.
 func (e *Vodka) DisableColoredLog() {
-	color.Disable()
+	colorDisable()
 }
 
 // HTTP2 enables HTTP2 support.
@@ -385,7 +381,7 @@ func (e *Vodka) Static(path, dir string) {
 // ServeDir serves files from a directory.
 func (e *Vodka) ServeDir(path, dir string) {
 	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_name`
+		return serveFile(dir, c.P(0), c) // Param `_*`
 	})
 }
 
@@ -501,21 +497,10 @@ func (e *Vodka) Server(addr string) *http.Server {
 	return s
 }
 
-func GetDefaultListenInfo() (string, int) {
+func GetAddress(args ...interface{}) string {
 	host := os.Getenv("HOST")
-	if len(host) == 0 {
-		host = "0.0.0.0"
-	}
 	_port, _ := strconv.ParseInt(os.Getenv("PORT"), 10, 32)
 	port := int(_port)
-	if port == 0 {
-		port = 8000
-	}
-	return host, port
-}
-
-func GetAddress(args ...interface{}) string {
-	host, port := GetDefaultListenInfo()
 
 	if len(args) == 1 {
 		switch arg := args[0].(type) {
@@ -538,6 +523,13 @@ func GetAddress(args ...interface{}) string {
 		if arg, ok := args[1].(int); ok {
 			port = arg
 		}
+	}
+
+	if len(host) == 0 {
+		host = "0.0.0.0"
+	}
+	if port == 0 {
+		port = 8000
 	}
 
 	addr := host + ":" + strconv.FormatInt(int64(port), 10)
@@ -661,9 +653,8 @@ func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
 }
 
 // wrapHandler wraps handler.
-func wrapHandler(handler Handler) HandlerFunc {
-
-	switch h := handler.(type) {
+func wrapHandler(h Handler) HandlerFunc {
+	switch h := h.(type) {
 	case HandlerFunc:
 		return h
 	case func(*Context) error:
@@ -678,11 +669,8 @@ func wrapHandler(handler Handler) HandlerFunc {
 			h(c.response, c.request)
 			return nil
 		}
-
 	default:
-		{
-			panic("vodka > unknown handler")
-		}
+		panic("vodka > unknown handler")
 	}
 }
 
