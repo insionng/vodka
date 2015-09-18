@@ -73,7 +73,7 @@ Or Linux/Unix shell:
 ```
 export HOST=localhost
 export PORT=1987
-go build app.go && app.exe
+go build app.go && ./app
 ```
 
 output:
