@@ -60,7 +60,7 @@ Community created packages for Vodka
 
 ## Vodka Case
 
-- [ZenPress](https://github.com/insionng/zenpress) Cms/Blog System(just start-up)
+- [ZenPress](https://github.com/insionng/zenpress) - Cms/Blog System(just start-up)
 
 ## Tips
 
