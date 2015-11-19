@@ -23,6 +23,7 @@ type (
 		pnames   []string
 		pvalues  []string
 		query    url.Values
+		Data     map[string]interface{}
 		store    store
 		vodka    *Vodka
 	}
@@ -36,6 +37,7 @@ func NewContext(req *http.Request, res *Response, e *Vodka) *Context {
 		response: res,
 		vodka:    e,
 		pvalues:  make([]string, *e.maxParam),
+		Data:     make(map[string]interface{}),
 		store:    make(store),
 	}
 }
