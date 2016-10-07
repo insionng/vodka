@@ -24,8 +24,45 @@
 
 - Environment:
 	- Go 1.7.1
-	- wrk 4.0.0
-	- 16 GB, 8 Core
+	- wrk 4.2.0
+	- Memory 16 GB
+    - Processor Intel® Xeon® CPU E3-1231 v3 @ 3.40GHz × 8
+
+    Simple Test:
+    ```go
+    package main
+
+    import (
+	    "net/http"
+
+        "github.com/insionng/vodka"
+	    "github.com/insionng/vodka/engine/fasthttp"
+    )
+
+    func main() {
+	    v := vodka.New()
+        v.GET("/", HelloHandler)
+	    v.Run(fasthttp.New(":1987"))
+    }
+
+    func HelloHandler(self vodka.Context) error {
+	    return self.String(http.StatusOK, "Hello, World!")
+    }
+
+    ```
+
+
+    ```sh
+    wrk -t8 -c400 -d20s http://localhost:1987
+    Running 20s test @ http://localhost:1987
+    8 threads and 400 connections
+    Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     1.06ms    1.15ms  38.67ms   92.60%
+    Req/Sec    54.87k     6.99k   77.05k    75.69%
+    8747188 requests in 20.05s, 1.21GB read
+    Requests/sec: 436330.95
+    Transfer/sec:     61.59MB
+    ```
 
 ## 快速开始
 
@@ -205,7 +242,7 @@ e.Use(middleware.Logger())
 e.Use(middleware.Recover())
 
 // Group level middleware
-g := e.Group("/admin")
+g := e.Group("/root")
 g.Use(middleware.BasicAuth(func(username, password string) bool {
 	if username == "joe" && password == "secret" {
 		return true
@@ -254,7 +291,7 @@ Middleware | Description
 Middleware | Description
 :--- | :---
 [vodkaperm](https://github.com/xyproto/vodkaperm) | Keeping track of users, login states and permissions.
-[vodkapprof](https://github.com/mtojek/vodkapprof) | Adapt net/http/pprof to labstack/vodka.
+[vodkapprof](https://github.com/vodka-contrib/vodkapprof) | Adapt net/http/pprof to vodka.
 
 
 ### Need help?
