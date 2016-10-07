@@ -1,4 +1,4 @@
-# Vodka
+# Vodka V2+
 
     由于Echo V3不再支持fasthttp, 于是我将以Vodka的名义自行维护Echo V2的后续开发，如果你也在使用我的这个版本欢迎留言交流.
 
