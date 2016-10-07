@@ -31,8 +31,7 @@
 
 ### 安装
 
-    在安装之前确认你已经安装了Go语言. Go语言安装请访问 [install instructions](http://golang.org/doc/install.html).
-
+在安装之前确认你已经安装了Go语言. Go语言安装请访问 [install instructions](http://golang.org/doc/install.html).
 
 Vodka is developed and tested using Go `1.7.x`+
 
