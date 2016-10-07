@@ -4,58 +4,36 @@ import (
 	"bytes"
 	"compress/gzip"
 	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/insionng/vodka"
-	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
+	"github.com/insionng/vodka/test"
+	"github.com/stretchr/testify/assert"
 )
 
-type closeNotifyingRecorder struct {
-	*httptest.ResponseRecorder
-	closed chan bool
-}
-
-func newCloseNotifyingRecorder() *closeNotifyingRecorder {
-	return &closeNotifyingRecorder{
-		httptest.NewRecorder(),
-		make(chan bool, 1),
-	}
-}
-
-func (c *closeNotifyingRecorder) close() {
-	c.closed <- true
-}
-
-func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
-	return c.closed
-}
-
 func TestGzip(t *testing.T) {
-	req, _ := http.NewRequest(vodka.GET, "/", nil)
-	rec := httptest.NewRecorder()
-	c := vodka.NewContext(req, vodka.NewResponse(rec), vodka.New())
-	h := func(c *vodka.Context) error {
-		c.Response().Write([]byte("test")) // For Content-Type sniffing
-		return nil
-	}
+	e := vodka.New()
+	req := test.NewRequest(vodka.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
 
 	// Skip if no Accept-Encoding header
-	Gzip()(h)(c)
-	assert.Equal(t, http.StatusOK, rec.Code)
+	h := Gzip()(func(c vodka.Context) error {
+		c.Response().Write([]byte("test")) // For Content-Type sniffing
+		return nil
+	})
+	h(c)
 	assert.Equal(t, "test", rec.Body.String())
 
-	req, _ = http.NewRequest(vodka.GET, "/", nil)
-	req.Header.Set(vodka.AcceptEncoding, "gzip")
-	rec = httptest.NewRecorder()
-	c = vodka.NewContext(req, vodka.NewResponse(rec), vodka.New())
+	req = test.NewRequest(vodka.GET, "/", nil)
+	req.Header().Set(vodka.HeaderAcceptEncoding, "gzip")
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
 
 	// Gzip
-	Gzip()(h)(c)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "gzip", rec.Header().Get(vodka.ContentEncoding))
-	assert.Contains(t, rec.Header().Get(vodka.ContentType), vodka.TextPlain)
+	h(c)
+	assert.Equal(t, "gzip", rec.Header().Get(vodka.HeaderContentEncoding))
+	assert.Contains(t, rec.Header().Get(vodka.HeaderContentType), vodka.MIMETextPlain)
 	r, err := gzip.NewReader(rec.Body)
 	defer r.Close()
 	if assert.NoError(t, err) {
@@ -65,79 +43,30 @@ func TestGzip(t *testing.T) {
 	}
 }
 
-func TestGzipFlush(t *testing.T) {
-	rec := httptest.NewRecorder()
-	buf := new(bytes.Buffer)
-	w := gzip.NewWriter(buf)
-	gw := gzipWriter{Writer: w, ResponseWriter: rec}
-
-	n0 := buf.Len()
-	if n0 != 0 {
-		t.Fatalf("buffer size = %d before writes; want 0", n0)
-	}
-
-	if err := gw.Flush(); err != nil {
-		t.Fatal(err)
-	}
-
-	n1 := buf.Len()
-	if n1 == 0 {
-		t.Fatal("no data after first flush")
-	}
-
-	gw.Write([]byte("x"))
-
-	n2 := buf.Len()
-	if n1 != n2 {
-		t.Fatalf("after writing a single byte, size changed from %d to %d; want no change", n1, n2)
-	}
-
-	if err := gw.Flush(); err != nil {
-		t.Fatal(err)
-	}
-
-	n3 := buf.Len()
-	if n2 == n3 {
-		t.Fatal("Flush didn't flush any data")
+func TestGzipNoContent(t *testing.T) {
+	e := vodka.New()
+	req := test.NewRequest(vodka.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	h := Gzip()(func(c vodka.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+	if assert.NoError(t, h(c)) {
+		assert.Empty(t, rec.Header().Get(vodka.HeaderContentEncoding))
+		assert.Empty(t, rec.Header().Get(vodka.HeaderContentType))
+		assert.Equal(t, 0, len(rec.Body.Bytes()))
 	}
 }
 
-func TestGzipCloseNotify(t *testing.T) {
-	rec := newCloseNotifyingRecorder()
-	buf := new(bytes.Buffer)
-	w := gzip.NewWriter(buf)
-	gw := gzipWriter{Writer: w, ResponseWriter: rec}
-	closed := false
-	notifier := gw.CloseNotify()
-	rec.close()
-
-	select {
-	case <-notifier:
-		closed = true
-	case <-time.After(time.Second):
-	}
-
-	assert.Equal(t, closed, true)
-}
-
-func BenchmarkGzip(b *testing.B) {
-
-	b.StopTimer()
-	b.ReportAllocs()
-
-	h := func(c *vodka.Context) error {
-		c.Response().Write([]byte("test")) // For Content-Type sniffing
-		return nil
-	}
-	req, _ := http.NewRequest(vodka.GET, "/", nil)
-	req.Header.Set(vodka.AcceptEncoding, "gzip")
-
-	b.StartTimer()
-
-	for i := 0; i < b.N; i++ {
-		rec := httptest.NewRecorder()
-		c := vodka.NewContext(req, vodka.NewResponse(rec), vodka.New())
-		Gzip()(h)(c)
-	}
-
+func TestGzipErrorReturned(t *testing.T) {
+	e := vodka.New()
+	e.Use(Gzip())
+	e.GET("/", func(c vodka.Context) error {
+		return vodka.NewHTTPError(http.StatusInternalServerError, "error")
+	})
+	req := test.NewRequest(vodka.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	e.ServeHTTP(req, rec)
+	assert.Empty(t, rec.Header().Get(vodka.HeaderContentEncoding))
+	assert.Equal(t, "error", rec.Body.String())
 }

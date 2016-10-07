@@ -3,46 +3,39 @@ package vodka
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
-	"reflect"
-	"runtime"
-	"strings"
 	"testing"
+
+	"reflect"
+	"strings"
 
 	"errors"
 
-	"github.com/insionng/vodka/libraries/labstack/gommon/color"
-	"github.com/insionng/vodka/libraries/net/websocket"
-	"github.com/insionng/vodka/libraries/stretchr/testify/assert"
+	"github.com/insionng/vodka/test"
+	"github.com/insionng/vodka/libraries/gommon/log"
+	"github.com/stretchr/testify/assert"
 )
 
 type (
 	user struct {
-		ID   string `json:"id" xml:"id"`
-		Name string `json:"name" xml:"name"`
+		ID   int    `json:"id" xml:"id" form:"id"`
+		Name string `json:"name" xml:"name" form:"name"`
 	}
 )
 
-func TestNewRuntimeGOOS(t *testing.T) {
-	changedColor := make(chan bool)
-	colorDisable = func() { changedColor <- true }
-	runtimeGOOS = "windows"
-	defer func() {
-		colorDisable = color.Disable
-		runtimeGOOS = runtime.GOOS
-	}()
-	go func() {
-		New()
-	}()
-	assert.True(t, <-changedColor)
-}
+const (
+	userJSON       = `{"id":1,"name":"Jon Snow"}`
+	userXML        = `<user><id>1</id><name>Jon Snow</name></user>`
+	userForm       = `id=1&name=Jon Snow`
+	invalidContent = "invalid content"
+)
 
 func TestVodka(t *testing.T) {
 	e := New()
-	req, _ := http.NewRequest(GET, "/", nil)
-	rec := httptest.NewRecorder()
-	c := NewContext(req, NewResponse(rec), e)
+	req := test.NewRequest(GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
 
 	// Router
 	assert.NotNil(t, e.Router())
@@ -53,46 +46,30 @@ func TestVodka(t *testing.T) {
 
 	// DefaultHTTPErrorHandler
 	e.DefaultHTTPErrorHandler(errors.New("error"), c)
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-}
-
-func TestVodkaIndex(t *testing.T) {
-	e := New()
-	e.Index("examples/website/public/index.html")
-	c, b := request(GET, "/", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
-}
-
-func TestVodkaFavicon(t *testing.T) {
-	e := New()
-	e.Favicon("examples/website/public/favicon.ico")
-	c, b := request(GET, "/favicon.ico", e)
-	assert.Equal(t, http.StatusOK, c)
-	assert.NotEmpty(t, b)
+	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 }
 
 func TestVodkaStatic(t *testing.T) {
 	e := New()
 
 	// OK
-	e.Static("/scripts", "examples/website/public/scripts")
-	c, b := request(GET, "/scripts/main.js", e)
+	e.Static("/images", "_fixture/images")
+	c, b := request(GET, "/images/walle.png", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.NotEmpty(t, b)
 
 	// No file
-	e.Static("/scripts", "examples/website/public/scripts")
-	c, _ = request(GET, "/scripts/index.js", e)
+	e.Static("/images", "_fixture/scripts")
+	c, _ = request(GET, "/images/bolt.png", e)
 	assert.Equal(t, http.StatusNotFound, c)
 
 	// Directory
-	e.Static("/scripts", "examples/website/public/scripts")
-	c, _ = request(GET, "/scripts", e)
-	assert.Equal(t, http.StatusForbidden, c)
+	e.Static("/images", "_fixture/images")
+	c, _ = request(GET, "/images", e)
+	assert.Equal(t, http.StatusNotFound, c)
 
 	// Directory with index.html
-	e.Static("/", "examples/website/public")
+	e.Static("/", "_fixture")
 	c, r := request(GET, "/", e)
 	assert.Equal(t, http.StatusOK, c)
 	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
@@ -100,84 +77,60 @@ func TestVodkaStatic(t *testing.T) {
 	// Sub-directory with index.html
 	c, r = request(GET, "/folder", e)
 	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, "sub directory", r)
+	assert.Equal(t, true, strings.HasPrefix(r, "<!doctype html>"))
+}
+
+func TestVodkaFile(t *testing.T) {
+	e := New()
+	e.File("/walle", "_fixture/images/walle.png")
+	c, b := request(GET, "/walle", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.NotEmpty(t, b)
 }
 
 func TestVodkaMiddleware(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
 
-	// vodka.MiddlewareFunc
-	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) error {
-			buf.WriteString("a")
-			return h(c)
-		}
-	}))
-
-	// func(vodka.HandlerFunc) vodka.HandlerFunc
-	e.Use(func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) error {
-			buf.WriteString("b")
-			return h(c)
-		}
-	})
-
-	// vodka.HandlerFunc
-	e.Use(HandlerFunc(func(c *Context) error {
-		buf.WriteString("c")
+	e.Pre(WrapMiddleware(func(c Context) error {
+		assert.Empty(t, c.Path())
+		buf.WriteString("-1")
 		return nil
 	}))
 
-	// func(*vodka.Context) error
-	e.Use(func(c *Context) error {
-		buf.WriteString("d")
+	e.Use(WrapMiddleware(func(c Context) error {
+		buf.WriteString("1")
 		return nil
-	})
-
-	// func(http.Handler) http.Handler
-	e.Use(func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			buf.WriteString("e")
-			h.ServeHTTP(w, r)
-		})
-	})
-
-	// http.Handler
-	e.Use(http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		buf.WriteString("f")
-	})))
-
-	// http.HandlerFunc
-	e.Use(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		buf.WriteString("g")
 	}))
 
-	// func(http.ResponseWriter, *http.Request)
-	e.Use(func(w http.ResponseWriter, r *http.Request) {
-		buf.WriteString("h")
-	})
+	e.Use(WrapMiddleware(func(c Context) error {
+		buf.WriteString("2")
+		return nil
+	}))
 
-	// Unknown
-	assert.Panics(t, func() {
-		e.Use(nil)
-	})
+	e.Use(WrapMiddleware(func(c Context) error {
+		buf.WriteString("3")
+		return nil
+	}))
 
 	// Route
-	e.Get("/", func(c *Context) error {
-		return c.String(http.StatusOK, "Hello!")
+	e.GET("/", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
 	})
 
 	c, b := request(GET, "/", e)
-	assert.Equal(t, "abcdefgh", buf.String())
+	assert.Equal(t, "-1123", buf.String())
 	assert.Equal(t, http.StatusOK, c)
-	assert.Equal(t, "Hello!", b)
+	assert.Equal(t, "OK", b)
+}
 
-	// Error
-	e.Use(func(*Context) error {
+func TestVodkaMiddlewareError(t *testing.T) {
+	e := New()
+	e.Use(WrapMiddleware(func(c Context) error {
 		return errors.New("error")
-	})
-	c, b = request(GET, "/", e)
+	}))
+	e.GET("/", NotFoundHandler)
+	c, _ := request(GET, "/", e)
 	assert.Equal(t, http.StatusInternalServerError, c)
 }
 
@@ -185,35 +138,13 @@ func TestVodkaHandler(t *testing.T) {
 	e := New()
 
 	// HandlerFunc
-	e.Get("/1", HandlerFunc(func(c *Context) error {
-		return c.String(http.StatusOK, "1")
-	}))
-
-	// func(*vodka.Context) error
-	e.Get("/2", func(c *Context) error {
-		return c.String(http.StatusOK, "2")
+	e.GET("/ok", func(c Context) error {
+		return c.String(http.StatusOK, "OK")
 	})
 
-	// http.Handler/http.HandlerFunc
-	e.Get("/3", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("3"))
-	}))
-
-	// func(http.ResponseWriter, *http.Request)
-	e.Get("/4", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("4"))
-	})
-
-	for _, p := range []string{"1", "2", "3", "4"} {
-		c, b := request(GET, "/"+p, e)
-		assert.Equal(t, http.StatusOK, c)
-		assert.Equal(t, p, b)
-	}
-
-	// Unknown
-	assert.Panics(t, func() {
-		e.Get("/5", nil)
-	})
+	c, b := request(GET, "/ok", e)
+	assert.Equal(t, http.StatusOK, c)
+	assert.Equal(t, "OK", b)
 }
 
 func TestVodkaConnect(t *testing.T) {
@@ -263,54 +194,26 @@ func TestVodkaTrace(t *testing.T) {
 
 func TestVodkaAny(t *testing.T) { // JFC
 	e := New()
-	e.Any("/", func(c *Context) error {
+	e.Any("/", func(c Context) error {
 		return c.String(http.StatusOK, "Any")
 	})
 }
 
 func TestVodkaMatch(t *testing.T) { // JFC
 	e := New()
-	e.Match([]string{GET, POST}, "/", func(c *Context) error {
+	e.Match([]string{GET, POST}, "/", func(c Context) error {
 		return c.String(http.StatusOK, "Match")
 	})
 }
 
-func TestVodkaWebSocket(t *testing.T) {
-	fmt.Println("TestVodkaWebSocket start")
-	e := New()
-	e.WebSocket("/ws", func(c *Context) error {
-		fmt.Println("Got WebSocket Request!")
-		c.socket.Write([]byte("test"))
-		return nil
-	})
-	srv := httptest.NewServer(e)
-	defer srv.Close()
-	addr := srv.Listener.Addr().String()
-	origin := "http://localhost"
-	url := fmt.Sprintf("ws://%s/ws", addr)
-	ws, err := websocket.Dial(url, "", origin)
-
-	if assert.NoError(t, err) {
-		ws.Write([]byte("test"))
-		defer ws.Close()
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(ws)
-		assert.Equal(t, "test", buf.String())
-		fmt.Println("Return buf.String():", buf.String())
-	}
-
-	fmt.Println("TestVodkaWebSocket end")
-}
-
 func TestVodkaURL(t *testing.T) {
 	e := New()
+	static := func(Context) error { return nil }
+	getUser := func(Context) error { return nil }
+	getFile := func(Context) error { return nil }
 
-	static := func(*Context) error { return nil }
-	getUser := func(*Context) error { return nil }
-	getFile := func(*Context) error { return nil }
-
-	e.Get("/static/file", static)
-	e.Get("/users/:id", getUser)
+	e.GET("/static/file", static)
+	e.GET("/users/:id", getUser)
 	g := e.Group("/group")
 	g.Get("/users/:uid/files/:fid", getFile)
 
@@ -323,120 +226,132 @@ func TestVodkaURL(t *testing.T) {
 
 func TestVodkaRoutes(t *testing.T) {
 	e := New()
-	h := func(*Context) error { return nil }
 	routes := []Route{
-		{GET, "/users/:user/events", h},
-		{GET, "/users/:user/events/public", h},
-		{POST, "/repos/:owner/:repo/git/refs", h},
-		{POST, "/repos/:owner/:repo/git/tags", h},
+		{GET, "/users/:user/events", ""},
+		{GET, "/users/:user/events/public", ""},
+		{POST, "/repos/:owner/:repo/git/refs", ""},
+		{POST, "/repos/:owner/:repo/git/tags", ""},
 	}
 	for _, r := range routes {
-		e.add(r.Method, r.Path, h)
+		e.add(r.Method, r.Path, func(c Context) error {
+			return c.String(http.StatusOK, "OK")
+		})
 	}
 
-	for i, r := range e.Routes() {
-		assert.Equal(t, routes[i].Method, r.Method)
-		assert.Equal(t, routes[i].Path, r.Path)
+	for _, r := range e.Routes() {
+		found := false
+		for _, rr := range routes {
+			if r.Method == rr.Method && r.Path == rr.Path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Route %s : %s not found", r.Method, r.Path)
+		}
 	}
 }
 
 func TestVodkaGroup(t *testing.T) {
 	e := New()
 	buf := new(bytes.Buffer)
-	e.Use(func(*Context) error {
-		buf.WriteString("0")
-		return nil
-	})
-	h := func(*Context) error { return nil }
+	e.Use(MiddlewareFunc(func(h HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			buf.WriteString("0")
+			return h(c)
+		}
+	}))
+	h := func(c Context) error {
+		return c.NoContent(http.StatusOK)
+	}
 
 	//--------
 	// Routes
 	//--------
 
-	e.Get("/users", h)
+	e.GET("/users", h)
 
 	// Group
 	g1 := e.Group("/group1")
-	g1.Use(func(*Context) error {
+	g1.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("1")
-		return nil
-	})
-	g1.Get("/", h)
+		return h(c)
+	}))
+	g1.Get("", h)
 
-	// Group with no parent middleware
-	g2 := e.Group("/group2", func(*Context) error {
+	// Nested groups with middleware
+	g2 := e.Group("/group2")
+	g2.Use(WrapMiddleware(func(c Context) error {
 		buf.WriteString("2")
 		return nil
-	})
-	g2.Get("/", h)
-
-	// Nested groups
-	g3 := e.Group("/group3")
-	g4 := g3.Group("/group4")
-	g4.Get("/", func(c *Context) error {
-		return c.Status(http.StatusOK)
-	})
+	}))
+	g3 := g2.Group("/group3")
+	g3.Use(WrapMiddleware(func(c Context) error {
+		buf.WriteString("3")
+		return nil
+	}))
+	g3.Get("", h)
 
 	request(GET, "/users", e)
-	// println(len(e.middleware))
 	assert.Equal(t, "0", buf.String())
 
 	buf.Reset()
-	request(GET, "/group1/", e)
-	// println(len(g1.vodka.middleware))
+	request(GET, "/group1", e)
 	assert.Equal(t, "01", buf.String())
 
 	buf.Reset()
-	request(GET, "/group2/", e)
-	assert.Equal(t, "2", buf.String())
-
-	buf.Reset()
-	c, _ := request(GET, "/group3/group4/", e)
-	assert.Equal(t, http.StatusOK, c)
+	request(GET, "/group2/group3", e)
+	assert.Equal(t, "023", buf.String())
 }
 
 func TestVodkaNotFound(t *testing.T) {
 	e := New()
-	r, _ := http.NewRequest(GET, "/files", nil)
-	w := httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	req := test.NewRequest(GET, "/files", nil)
+	rec := test.NewResponseRecorder()
+	e.ServeHTTP(req, rec)
+	assert.Equal(t, http.StatusNotFound, rec.Status())
 }
 
-func TestVodkaBadRequest(t *testing.T) {
+func TestVodkaMethodNotAllowed(t *testing.T) {
 	e := New()
-	r, _ := http.NewRequest("INVALID", "/files", nil)
-	w := httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	e.GET("/", func(c Context) error {
+		return c.String(http.StatusOK, "Vodka!")
+	})
+	req := test.NewRequest(POST, "/", nil)
+	rec := test.NewResponseRecorder()
+	e.ServeHTTP(req, rec)
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Status())
 }
 
 func TestVodkaHTTPError(t *testing.T) {
 	m := http.StatusText(http.StatusBadRequest)
 	he := NewHTTPError(http.StatusBadRequest, m)
-	assert.Equal(t, http.StatusBadRequest, he.Code())
+	assert.Equal(t, http.StatusBadRequest, he.Code)
 	assert.Equal(t, m, he.Error())
 }
 
-func TestVodkaServer(t *testing.T) {
+func TestVodkaContext(t *testing.T) {
 	e := New()
-	s := e.Server(":1323")
-	assert.IsType(t, &http.Server{}, s)
+	c := e.AcquireContext()
+	assert.IsType(t, new(vodkaContext), c)
+	e.ReleaseContext(c)
 }
 
-func TestStripTrailingSlash(t *testing.T) {
+func TestVodkaLogger(t *testing.T) {
 	e := New()
-	e.StripTrailingSlash()
-	r, _ := http.NewRequest(GET, "/users/", nil)
-	w := httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusNotFound, w.Code)
+	l := log.New("test")
+	e.SetLogger(l)
+	assert.Equal(t, l, e.Logger())
+	e.SetLogOutput(ioutil.Discard)
+	assert.Equal(t, l.Output(), ioutil.Discard)
+	e.SetLogLevel(log.OFF)
+	assert.Equal(t, l.Level(), log.OFF)
 }
 
 func testMethod(t *testing.T, method, path string, e *Vodka) {
 	m := fmt.Sprintf("%c%s", method[0], strings.ToLower(method[1:]))
 	p := reflect.ValueOf(path)
-	h := reflect.ValueOf(func(c *Context) error {
+	h := reflect.ValueOf(func(c Context) error {
 		return c.String(http.StatusOK, method)
 	})
 	i := interface{}(e)
@@ -448,8 +363,15 @@ func testMethod(t *testing.T, method, path string, e *Vodka) {
 }
 
 func request(method, path string, e *Vodka) (int, string) {
-	r, _ := http.NewRequest(method, path, nil)
-	w := httptest.NewRecorder()
-	e.ServeHTTP(w, r)
-	return w.Code, w.Body.String()
+	req := test.NewRequest(method, path, nil)
+	rec := test.NewResponseRecorder()
+	e.ServeHTTP(req, rec)
+	return rec.Status(), rec.Body.String()
+}
+
+func TestVodkaBinder(t *testing.T) {
+	e := New()
+	b := &binder{}
+	e.SetBinder(b)
+	assert.Equal(t, b, e.Binder())
 }

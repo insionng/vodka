@@ -1,62 +1,80 @@
 package middleware
 
 import (
+	"bytes"
 	"errors"
-	"github.com/insionng/vodka"
 	"net/http"
-	"net/http/httptest"
 	"testing"
+
+	"github.com/insionng/vodka"
+	"github.com/insionng/vodka/test"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRealIPHeader(t *testing.T) {
-	e := vodka.New()
-	req, _ := http.NewRequest(vodka.GET, "/", nil)
-	req.Header.Add("X-Real-IP", "127.0.0.1")
-	req.Header.Add("X-Forwarded-For", "127.0.0.1")
-	rec := httptest.NewRecorder()
-	c := vodka.NewContext(req, vodka.NewResponse(rec), e)
-
-	// Status 2xx
-	h := func(c *vodka.Context) error {
-		return c.String(http.StatusOK, "test")
-	}
-	Logger()(h)(c)
-}
-
 func TestLogger(t *testing.T) {
+	// Note: Just for the test coverage, not a real test.
 	e := vodka.New()
-	req, _ := http.NewRequest(vodka.GET, "/", nil)
-	rec := httptest.NewRecorder()
-	c := vodka.NewContext(req, vodka.NewResponse(rec), e)
+	req := test.NewRequest(vodka.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	h := Logger()(func(c vodka.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
 
 	// Status 2xx
-	h := func(c *vodka.Context) error {
-		return c.String(http.StatusOK, "test")
-	}
-	Logger()(h)(c)
+	h(c)
 
 	// Status 3xx
-	rec = httptest.NewRecorder()
-	c = vodka.NewContext(req, vodka.NewResponse(rec), e)
-	h = func(c *vodka.Context) error {
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	h = Logger()(func(c vodka.Context) error {
 		return c.String(http.StatusTemporaryRedirect, "test")
-	}
-	Logger()(h)(c)
+	})
+	h(c)
 
 	// Status 4xx
-	rec = httptest.NewRecorder()
-	c = vodka.NewContext(req, vodka.NewResponse(rec), e)
-	h = func(c *vodka.Context) error {
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	h = Logger()(func(c vodka.Context) error {
 		return c.String(http.StatusNotFound, "test")
-	}
-	Logger()(h)(c)
+	})
+	h(c)
 
 	// Status 5xx with empty path
-	req, _ = http.NewRequest(vodka.GET, "", nil)
-	rec = httptest.NewRecorder()
-	c = vodka.NewContext(req, vodka.NewResponse(rec), e)
-	h = func(c *vodka.Context) error {
+	req = test.NewRequest(vodka.GET, "", nil)
+	rec = test.NewResponseRecorder()
+	c = e.NewContext(req, rec)
+	h = Logger()(func(c vodka.Context) error {
 		return errors.New("error")
-	}
-	Logger()(h)(c)
+	})
+	h(c)
+}
+
+func TestLoggerIPAddress(t *testing.T) {
+	e := vodka.New()
+	req := test.NewRequest(vodka.GET, "/", nil)
+	rec := test.NewResponseRecorder()
+	c := e.NewContext(req, rec)
+	buf := new(bytes.Buffer)
+	e.Logger().SetOutput(buf)
+	ip := "127.0.0.1"
+	h := Logger()(func(c vodka.Context) error {
+		return c.String(http.StatusOK, "test")
+	})
+
+	// With X-Real-IP
+	req.Header().Add(vodka.HeaderXRealIP, ip)
+	h(c)
+	assert.Contains(t, ip, buf.String())
+
+	// With X-Forwarded-For
+	buf.Reset()
+	req.Header().Del(vodka.HeaderXRealIP)
+	req.Header().Add(vodka.HeaderXForwardedFor, ip)
+	h(c)
+	assert.Contains(t, ip, buf.String())
+
+	buf.Reset()
+	h(c)
+	assert.Contains(t, ip, buf.String())
 }

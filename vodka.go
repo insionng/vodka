@@ -1,150 +1,184 @@
+/*
+Package vodka implements a fast and unfancy HTTP server framework for Go (Golang).
+
+Example:
+
+	package main
+
+	import (
+	    "net/http"
+
+	    "github.com/insionng/vodka"
+	    "github.com/insionng/vodka/engine/standard"
+	    "github.com/insionng/vodka/middleware"
+	)
+
+	// Handler
+	func hello(c vodka.Context) error {
+	    return c.String(http.StatusOK, "Hello, World!")
+	}
+
+	func main() {
+	    // Vodka instance
+	    e := vodka.New()
+
+	    // Middleware
+	    e.Use(middleware.Logger())
+	    e.Use(middleware.Recover())
+
+	    // Routes
+	    e.GET("/", hello)
+
+	    // Start server
+	    e.Run(standard.New(":1323"))
+	}
+
+Learn more at https://github.com/insionng/vodka
+*/
 package vodka
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"os"
-	spath "path"
+	"path"
 	"reflect"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 
-	"encoding/xml"
-
-	"github.com/insionng/vodka/libraries/bradfitz/http2"
-	"github.com/insionng/vodka/libraries/labstack/gommon/color"
-	"github.com/insionng/vodka/libraries/net/websocket"
+	"github.com/insionng/vodka/engine"
+	glog "github.com/insionng/vodka/libraries/gommon/log"
+	"github.com/insionng/vodka/log"
 )
 
 type (
+	// Vodka is the top-level framework instance.
 	Vodka struct {
-		prefix                  string
-		middleware              []MiddlewareFunc
-		http2                   bool
-		maxParam                *int
-		notFoundHandler         HandlerFunc
-		defaultHTTPErrorHandler HTTPErrorHandler
-		httpErrorHandler        HTTPErrorHandler
-		binder                  Binder
-		renderer                Renderer
-		pool                    sync.Pool
-		debug                   bool
-		stripTrailingSlash      bool
-		router                  *Router
+		server           engine.Server
+		premiddleware    []MiddlewareFunc
+		middleware       []MiddlewareFunc
+		maxParam         *int
+		notFoundHandler  HandlerFunc
+		httpErrorHandler HTTPErrorHandler
+		binder           Binder
+		renderer         Renderer
+		pool             sync.Pool
+		debug            bool
+		router           *Router
+		logger           log.Logger
 	}
 
+	// Route contains a handler and information for matching against requests.
 	Route struct {
 		Method  string
 		Path    string
-		Handler Handler
+		Handler string
 	}
 
+	// HTTPError represents an error that occurred while handling a request.
 	HTTPError struct {
-		code    int
-		message string
+		Code    int
+		Message string
 	}
 
-	Middleware     interface{}
+	// MiddlewareFunc defines a function to process middleware.
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
-	Handler        interface{}
-	HandlerFunc    func(*Context) error
+
+	// HandlerFunc defines a function to server HTTP requests.
+	HandlerFunc func(Context) error
 
 	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(error, *Context)
+	HTTPErrorHandler func(error, Context)
 
-	// Binder is the interface that wraps the Bind method.
-	Binder interface {
-		Bind(*http.Request, interface{}) error
-	}
-
-	binder struct {
-	}
-
-	// Validator is the interface that wraps the Validate method.
+	// Validator is the interface that wraps the Validate function.
 	Validator interface {
 		Validate() error
 	}
 
-	// Renderer is the interface that wraps the Render method.
+	// Renderer is the interface that wraps the Render function.
 	Renderer interface {
-		Render(w io.Writer, name string, data interface{}) error
+		Render(io.Writer, string, interface{}, Context) error
 	}
 )
 
+// HTTP methods
 const (
-	// CONNECT HTTP method
 	CONNECT = "CONNECT"
-	// DELETE HTTP method
-	DELETE = "DELETE"
-	// GET HTTP method
-	GET = "GET"
-	// HEAD HTTP method
-	HEAD = "HEAD"
-	// OPTIONS HTTP method
+	DELETE  = "DELETE"
+	GET     = "GET"
+	HEAD    = "HEAD"
 	OPTIONS = "OPTIONS"
-	// PATCH HTTP method
-	PATCH = "PATCH"
-	// POST HTTP method
-	POST = "POST"
-	// PUT HTTP method
-	PUT = "PUT"
-	// TRACE HTTP method
-	TRACE = "TRACE"
+	PATCH   = "PATCH"
+	POST    = "POST"
+	PUT     = "PUT"
+	TRACE   = "TRACE"
+)
 
-	//-------------
-	// Media types
-	//-------------
+// MIME types
+const (
+	MIMEApplicationJSON                  = "application/json"
+	MIMEApplicationJSONCharsetUTF8       = MIMEApplicationJSON + "; " + charsetUTF8
+	MIMEApplicationJavaScript            = "application/javascript"
+	MIMEApplicationJavaScriptCharsetUTF8 = MIMEApplicationJavaScript + "; " + charsetUTF8
+	MIMEApplicationXML                   = "application/xml"
+	MIMEApplicationXMLCharsetUTF8        = MIMEApplicationXML + "; " + charsetUTF8
+	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
+	MIMEApplicationProtobuf              = "application/protobuf"
+	MIMEApplicationMsgpack               = "application/msgpack"
+	MIMETextHTML                         = "text/html"
+	MIMETextHTMLCharsetUTF8              = MIMETextHTML + "; " + charsetUTF8
+	MIMETextPlain                        = "text/plain"
+	MIMETextPlainCharsetUTF8             = MIMETextPlain + "; " + charsetUTF8
+	MIMEMultipartForm                    = "multipart/form-data"
+	MIMEOctetStream                      = "application/octet-stream"
+)
 
-	ApplicationJSON                  = "application/json"
-	ApplicationJSONCharsetUTF8       = ApplicationJSON + "; " + CharsetUTF8
-	ApplicationJavaScript            = "application/javascript"
-	ApplicationJavaScriptCharsetUTF8 = ApplicationJavaScript + "; " + CharsetUTF8
-	ApplicationXML                   = "application/xml"
-	ApplicationXMLCharsetUTF8        = ApplicationXML + "; " + CharsetUTF8
-	ApplicationForm                  = "application/x-www-form-urlencoded"
-	ApplicationProtobuf              = "application/protobuf"
-	ApplicationMsgpack               = "application/msgpack"
-	TextHTML                         = "text/html"
-	TextHTMLCharsetUTF8              = TextHTML + "; " + CharsetUTF8
-	TextPlain                        = "text/plain"
-	TextPlainCharsetUTF8             = TextPlain + "; " + CharsetUTF8
-	MultipartForm                    = "multipart/form-data"
+const (
+	charsetUTF8 = "charset=utf-8"
+)
 
-	//---------
-	// Charset
-	//---------
+// Headers
+const (
+	HeaderAcceptEncoding                = "Accept-Encoding"
+	HeaderAllow                         = "Allow"
+	HeaderAuthorization                 = "Authorization"
+	HeaderContentDisposition            = "Content-Disposition"
+	HeaderContentEncoding               = "Content-Encoding"
+	HeaderContentLength                 = "Content-Length"
+	HeaderContentType                   = "Content-Type"
+	HeaderCookie                        = "Cookie"
+	HeaderSetCookie                     = "Set-Cookie"
+	HeaderIfModifiedSince               = "If-Modified-Since"
+	HeaderLastModified                  = "Last-Modified"
+	HeaderLocation                      = "Location"
+	HeaderUpgrade                       = "Upgrade"
+	HeaderVary                          = "Vary"
+	HeaderWWWAuthenticate               = "WWW-Authenticate"
+	HeaderXForwardedProto               = "X-Forwarded-Proto"
+	HeaderXHTTPMethodOverride           = "X-HTTP-Method-Override"
+	HeaderXForwardedFor                 = "X-Forwarded-For"
+	HeaderXRealIP                       = "X-Real-IP"
+	HeaderServer                        = "Server"
+	HeaderOrigin                        = "Origin"
+	HeaderAccessControlRequestMethod    = "Access-Control-Request-Method"
+	HeaderAccessControlRequestHeaders   = "Access-Control-Request-Headers"
+	HeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
+	HeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"
+	HeaderAccessControlAllowHeaders     = "Access-Control-Allow-Headers"
+	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
+	HeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
+	HeaderAccessControlMaxAge           = "Access-Control-Max-Age"
 
-	CharsetUTF8 = "charset=utf-8"
-
-	//---------
-	// Headers
-	//---------
-
-	AcceptEncoding     = "Accept-Encoding"
-	Authorization      = "Authorization"
-	ContentDisposition = "Content-Disposition"
-	ContentEncoding    = "Content-Encoding"
-	ContentLength      = "Content-Length"
-	ContentType        = "Content-Type"
-	Location           = "Location"
-	Upgrade            = "Upgrade"
-	Vary               = "Vary"
-	WWWAuthenticate    = "WWW-Authenticate"
-
-	//-----------
-	// Protocols
-	//-----------
-
-	WebSocket = "websocket"
-
-	indexFile = "index.html"
+	// Security
+	HeaderStrictTransportSecurity = "Strict-Transport-Security"
+	HeaderXContentTypeOptions     = "X-Content-Type-Options"
+	HeaderXXSSProtection          = "X-XSS-Protection"
+	HeaderXFrameOptions           = "X-Frame-Options"
+	HeaderContentSecurityPolicy   = "Content-Security-Policy"
+	HeaderXCSRFToken              = "X-CSRF-Token"
 )
 
 var (
@@ -159,64 +193,58 @@ var (
 		PUT,
 		TRACE,
 	}
-
-	//--------
-	// Errors
-	//--------
-
-	UnsupportedMediaType  = errors.New("vodka > unsupported media type")
-	RendererNotRegistered = errors.New("vodka > renderer not registered")
-	InvalidRedirectCode   = errors.New("vodka > invalid redirect status code")
-
-	//----------------
-	// Error handlers
-	//----------------
-
-	notFoundHandler = func(c *Context) error {
-		return NewHTTPError(http.StatusNotFound)
-	}
-
-	badRequestHandler = func(c *Context) error {
-		return NewHTTPError(http.StatusBadRequest)
-	}
 )
 
-var runtimeGOOS = runtime.GOOS
+// Errors
+var (
+	ErrUnsupportedMediaType        = NewHTTPError(http.StatusUnsupportedMediaType)
+	ErrNotFound                    = NewHTTPError(http.StatusNotFound)
+	ErrUnauthorized                = NewHTTPError(http.StatusUnauthorized)
+	ErrMethodNotAllowed            = NewHTTPError(http.StatusMethodNotAllowed)
+	ErrStatusRequestEntityTooLarge = NewHTTPError(http.StatusRequestEntityTooLarge)
+	ErrRendererNotRegistered       = errors.New("renderer not registered")
+	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
+	ErrCookieNotFound              = errors.New("cookie not found")
+)
+
+// Error handlers
+var (
+	NotFoundHandler = func(c Context) error {
+		return ErrNotFound
+	}
+
+	MethodNotAllowedHandler = func(c Context) error {
+		return ErrMethodNotAllowed
+	}
+)
 
 // New creates an instance of Vodka.
 func New() (e *Vodka) {
 	e = &Vodka{maxParam: new(int)}
 	e.pool.New = func() interface{} {
-		return NewContext(nil, new(Response), e)
+		return e.NewContext(nil, nil)
 	}
 	e.router = NewRouter(e)
 
-	//----------
 	// Defaults
-	//----------
-
-	if runtimeGOOS == "windows" {
-		e.DisableColoredLog()
-	}
-	e.HTTP2()
-	e.defaultHTTPErrorHandler = func(err error, c *Context) {
-		code := http.StatusInternalServerError
-		msg := http.StatusText(code)
-		if he, ok := err.(*HTTPError); ok {
-			code = he.code
-			msg = he.message
-		}
-		if e.debug {
-			msg = err.Error()
-		}
-		if !c.response.committed {
-			http.Error(c.response, msg, code)
-		}
-		log.Println(err)
-	}
-	e.SetHTTPErrorHandler(e.defaultHTTPErrorHandler)
+	e.SetHTTPErrorHandler(e.DefaultHTTPErrorHandler)
 	e.SetBinder(&binder{})
+	l := glog.New("vodka")
+	l.SetLevel(glog.OFF)
+	e.SetLogger(l)
 	return
+}
+
+// NewContext returns a Context instance.
+func (e *Vodka) NewContext(req engine.Request, res engine.Response) Context {
+	return &vodkaContext{
+		context:  context.Background(),
+		request:  req,
+		response: res,
+		vodka:    e,
+		pvalues:  make([]string, *e.maxParam),
+		handler:  NotFoundHandler,
+	}
 }
 
 // Router returns router.
@@ -224,21 +252,45 @@ func (e *Vodka) Router() *Router {
 	return e.router
 }
 
-var colorDisable = color.Disable
-
-// DisableColoredLog disables colored log.
-func (e *Vodka) DisableColoredLog() {
-	colorDisable()
+// Logger returns the logger instance.
+func (e *Vodka) Logger() log.Logger {
+	return e.logger
 }
 
-// HTTP2 enables HTTP2 support.
-func (e *Vodka) HTTP2() {
-	e.http2 = true
+// SetLogger defines a custom logger.
+func (e *Vodka) SetLogger(l log.Logger) {
+	e.logger = l
+}
+
+// SetLogOutput sets the output destination for the logger. Default value is `os.Std*`
+func (e *Vodka) SetLogOutput(w io.Writer) {
+	e.logger.SetOutput(w)
+}
+
+// SetLogLevel sets the log level for the logger. Default value ERROR.
+func (e *Vodka) SetLogLevel(l glog.Lvl) {
+	e.logger.SetLevel(l)
 }
 
 // DefaultHTTPErrorHandler invokes the default HTTP error handler.
-func (e *Vodka) DefaultHTTPErrorHandler(err error, c *Context) {
-	e.defaultHTTPErrorHandler(err, c)
+func (e *Vodka) DefaultHTTPErrorHandler(err error, c Context) {
+	code := http.StatusInternalServerError
+	msg := http.StatusText(code)
+	if he, ok := err.(*HTTPError); ok {
+		code = he.Code
+		msg = he.Message
+	}
+	if e.debug {
+		msg = err.Error()
+	}
+	if !c.Response().Committed() {
+		if c.Request().Method() == HEAD { // Issue #608
+			c.NoContent(code)
+		} else {
+			c.String(code, msg)
+		}
+	}
+	e.logger.Error(err)
 }
 
 // SetHTTPErrorHandler registers a custom Vodka.HTTPErrorHandler.
@@ -246,12 +298,17 @@ func (e *Vodka) SetHTTPErrorHandler(h HTTPErrorHandler) {
 	e.httpErrorHandler = h
 }
 
-// SetBinder registers a custom binder. It's invoked by Context.Bind().
+// SetBinder registers a custom binder. It's invoked by `Context#Bind()`.
 func (e *Vodka) SetBinder(b Binder) {
 	e.binder = b
 }
 
-// SetRenderer registers an HTML template renderer. It's invoked by Context.Render().
+// Binder returns the binder instance.
+func (e *Vodka) Binder() Binder {
+	return e.binder
+}
+
+// SetRenderer registers an HTML template renderer. It's invoked by `Context#Render()`.
 func (e *Vodka) SetRenderer(r Renderer) {
 	e.renderer = r
 }
@@ -266,180 +323,181 @@ func (e *Vodka) Debug() bool {
 	return e.debug
 }
 
-// StripTrailingSlash enables removing trailing slash from the request path.
-func (e *Vodka) StripTrailingSlash() {
-	e.stripTrailingSlash = true
+// Pre adds middleware to the chain which is run before router.
+func (e *Vodka) Pre(middleware ...MiddlewareFunc) {
+	e.premiddleware = append(e.premiddleware, middleware...)
 }
 
-// Use adds handler to the middleware chain.
-func (e *Vodka) Use(m ...Middleware) {
-	for _, h := range m {
-		e.middleware = append(e.middleware, wrapMiddleware(h))
-	}
+// Use adds middleware to the chain which is run after router.
+func (e *Vodka) Use(middleware ...MiddlewareFunc) {
+	e.middleware = append(e.middleware, middleware...)
 }
 
-// Connect adds a CONNECT route > handler to the router.
-func (e *Vodka) Connect(path string, h Handler) {
-	e.add(CONNECT, path, h)
+// CONNECT registers a new CONNECT route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) CONNECT(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(CONNECT, path, h, m...)
 }
 
-// Delete adds a DELETE route > handler to the router.
-func (e *Vodka) Delete(path string, h Handler) {
-	e.add(DELETE, path, h)
+// Connect is deprecated, use `CONNECT()` instead.
+func (e *Vodka) Connect(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.CONNECT(path, h, m...)
 }
 
-// Get adds a GET route > handler to the router.
-func (e *Vodka) Get(path string, h Handler) {
-	e.add(GET, path, h)
+// DELETE registers a new DELETE route for a path with matching handler in the router
+// with optional route-level middleware.
+func (e *Vodka) DELETE(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(DELETE, path, h, m...)
 }
 
-// Head adds a HEAD route > handler to the router.
-func (e *Vodka) Head(path string, h Handler) {
-	e.add(HEAD, path, h)
+// Delete is deprecated, use `DELETE()` instead.
+func (e *Vodka) Delete(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.DELETE(path, h, m...)
 }
 
-// Options adds an OPTIONS route > handler to the router.
-func (e *Vodka) Options(path string, h Handler) {
-	e.add(OPTIONS, path, h)
+// GET registers a new GET route for a path with matching handler in the router
+// with optional route-level middleware.
+func (e *Vodka) GET(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(GET, path, h, m...)
 }
 
-// Patch adds a PATCH route > handler to the router.
-func (e *Vodka) Patch(path string, h Handler) {
-	e.add(PATCH, path, h)
+// Get is deprecated, use `GET()` instead.
+func (e *Vodka) Get(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.GET(path, h, m...)
 }
 
-// Post adds a POST route > handler to the router.
-func (e *Vodka) Post(path string, h Handler) {
-	e.add(POST, path, h)
+// HEAD registers a new HEAD route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) HEAD(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(HEAD, path, h, m...)
 }
 
-// Put adds a PUT route > handler to the router.
-func (e *Vodka) Put(path string, h Handler) {
-	e.add(PUT, path, h)
+// Head is deprecated, use `HEAD()` instead.
+func (e *Vodka) Head(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.HEAD(path, h, m...)
 }
 
-// Trace adds a TRACE route > handler to the router.
-func (e *Vodka) Trace(path string, h Handler) {
-	e.add(TRACE, path, h)
+// OPTIONS registers a new OPTIONS route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) OPTIONS(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(OPTIONS, path, h, m...)
 }
 
-// Any adds a route > handler to the router for all HTTP methods.
-func (e *Vodka) Any(path string, h Handler) {
+// Options is deprecated, use `OPTIONS()` instead.
+func (e *Vodka) Options(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.OPTIONS(path, h, m...)
+}
+
+// PATCH registers a new PATCH route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) PATCH(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(PATCH, path, h, m...)
+}
+
+// Patch is deprecated, use `PATCH()` instead.
+func (e *Vodka) Patch(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.PATCH(path, h, m...)
+}
+
+// POST registers a new POST route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) POST(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(POST, path, h, m...)
+}
+
+// Post is deprecated, use `POST()` instead.
+func (e *Vodka) Post(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.POST(path, h, m...)
+}
+
+// PUT registers a new PUT route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) PUT(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(PUT, path, h, m...)
+}
+
+// Put is deprecated, use `PUT()` instead.
+func (e *Vodka) Put(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.PUT(path, h, m...)
+}
+
+// TRACE registers a new TRACE route for a path with matching handler in the
+// router with optional route-level middleware.
+func (e *Vodka) TRACE(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.add(TRACE, path, h, m...)
+}
+
+// Trace is deprecated, use `TRACE()` instead.
+func (e *Vodka) Trace(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	e.TRACE(path, h, m...)
+}
+
+// Any registers a new route for all HTTP methods and path with matching handler
+// in the router with optional route-level middleware.
+func (e *Vodka) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
 	for _, m := range methods {
-		e.add(m, path, h)
+		e.add(m, path, handler, middleware...)
 	}
 }
 
-// Match adds a route > handler to the router for multiple HTTP methods provided.
-func (e *Vodka) Match(methods []string, path string, h Handler) {
+// Match registers a new route for multiple HTTP methods and path with matching
+// handler in the router with optional route-level middleware.
+func (e *Vodka) Match(methods []string, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
 	for _, m := range methods {
-		e.add(m, path, h)
+		e.add(m, path, handler, middleware...)
 	}
 }
 
-// WebSocket adds a WebSocket route > handler to the router.
-func (e *Vodka) WebSocket(path string, h HandlerFunc) {
-	e.Get(path, func(c *Context) (err error) {
-		wss := websocket.Server{
-			Handler: func(ws *websocket.Conn) {
-				c.socket = ws
-				c.response.status = http.StatusSwitchingProtocols
-				err = h(c)
-			},
-		}
-		wss.ServeHTTP(c.response, c.request)
-		return err
+// Static registers a new route with path prefix to serve static files from the
+// provided root directory.
+func (e *Vodka) Static(prefix, root string) {
+	e.GET(prefix+"*", func(c Context) error {
+		return c.File(path.Join(root, c.P(0)))
 	})
 }
 
-func (e *Vodka) add(method, path string, h Handler) {
-	path = e.prefix + path
-	e.router.Add(method, path, wrapHandler(h), e)
+// File registers a new route with path to serve a static file.
+func (e *Vodka) File(path, file string) {
+	e.GET(path, func(c Context) error {
+		return c.File(file)
+	})
+}
+
+func (e *Vodka) add(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+	name := handlerName(handler)
+	e.router.Add(method, path, func(c Context) error {
+		h := handler
+		// Chain middleware
+		for i := len(middleware) - 1; i >= 0; i-- {
+			h = middleware[i](h)
+		}
+		return h(c)
+	}, e)
 	r := Route{
 		Method:  method,
 		Path:    path,
-		Handler: runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name(),
+		Handler: name,
 	}
-	e.router.routes = append(e.router.routes, r)
+	e.router.routes[method+path] = r
 }
 
-// Index serves index file.
-func (e *Vodka) Index(file string) {
-	e.ServeFile("/", file)
-}
-
-// Favicon serves the default favicon - GET /favicon.ico.
-func (e *Vodka) Favicon(file string) {
-	e.ServeFile("/favicon.ico", file)
-}
-
-// Static serves static files from a directory. It's an alias for `Vodka.ServeDir`
-func (e *Vodka) Static(path, dir string) {
-	e.ServeDir(path, dir)
-}
-
-// ServeDir serves files from a directory.
-func (e *Vodka) ServeDir(path, dir string) {
-	e.Get(path+"*", func(c *Context) error {
-		return serveFile(dir, c.P(0), c) // Param `_*`
-	})
-}
-
-// ServeFile serves a file.
-func (e *Vodka) ServeFile(path, file string) {
-	e.Get(path, func(c *Context) error {
-		dir, file := spath.Split(file)
-		return serveFile(dir, file, c)
-	})
-}
-
-func serveFile(dir, file string, c *Context) error {
-	fs := http.Dir(dir)
-	f, err := fs.Open(file)
-	if err != nil {
-		return NewHTTPError(http.StatusNotFound)
-	}
-
-	fi, _ := f.Stat()
-	if fi.IsDir() {
-		file = spath.Join(file, indexFile)
-		f, err = fs.Open(file)
-		if err != nil {
-			return NewHTTPError(http.StatusForbidden)
-		}
-		fi, _ = f.Stat()
-	}
-
-	http.ServeContent(c.response, c.request, fi.Name(), fi.ModTime(), f)
-	return nil
-}
-
-// Group creates a new sub router with prefix. It inherits all properties from
-// the parent. Passing middleware overrides parent middleware.
-func (e *Vodka) Group(prefix string, m ...Middleware) *Group {
-	g := &Group{*e}
-	g.vodka.prefix += prefix
-	if len(m) > 0 {
-		g.vodka.middleware = nil
-		g.Use(m...)
-	} else {
-		mw := make([]MiddlewareFunc, len(g.vodka.middleware))
-		copy(mw, g.vodka.middleware)
-		g.vodka.middleware = mw
-	}
-	return g
+// Group creates a new router group with prefix and optional group-level middleware.
+func (e *Vodka) Group(prefix string, m ...MiddlewareFunc) (g *Group) {
+	g = &Group{prefix: prefix, vodka: e}
+	g.Use(m...)
+	return
 }
 
 // URI generates a URI from handler.
-func (e *Vodka) URI(h Handler, params ...interface{}) string {
+func (e *Vodka) URI(handler HandlerFunc, params ...interface{}) string {
 	uri := new(bytes.Buffer)
-	pl := len(params)
+	ln := len(params)
 	n := 0
-	hn := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	name := handlerName(handler)
 	for _, r := range e.router.routes {
-		if r.Handler == hn {
+		if r.Handler == name {
 			for i, l := 0, len(r.Path); i < l; i++ {
-				if r.Path[i] == ':' && n < pl {
+				if r.Path[i] == ':' && n < ln {
 					for ; i < l && r.Path[i] != '/'; i++ {
 					}
 					uri.WriteString(fmt.Sprintf("%v", params[n]))
@@ -456,27 +514,50 @@ func (e *Vodka) URI(h Handler, params ...interface{}) string {
 }
 
 // URL is an alias for `URI` function.
-func (e *Vodka) URL(h Handler, params ...interface{}) string {
+func (e *Vodka) URL(h HandlerFunc, params ...interface{}) string {
 	return e.URI(h, params...)
 }
 
 // Routes returns the registered routes.
 func (e *Vodka) Routes() []Route {
-	return e.router.routes
+	routes := []Route{}
+	for _, v := range e.router.routes {
+		routes = append(routes, v)
+	}
+	return routes
 }
 
-// ServeHTTP implements `http.Handler` interface, which serves HTTP requests.
-func (e *Vodka) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c := e.pool.Get().(*Context)
-	h, vodka := e.router.Find(r.Method, r.URL.Path, c)
-	if vodka != nil {
-		e = vodka
-	}
-	c.reset(r, w, e)
+// AcquireContext returns an empty `Context` instance from the pool.
+// You must be return the context by calling `ReleaseContext()`.
+func (e *Vodka) AcquireContext() Context {
+	return e.pool.Get().(Context)
+}
 
-	// Chain middleware with handler in the end
-	for i := len(e.middleware) - 1; i >= 0; i-- {
-		h = e.middleware[i](h)
+// ReleaseContext returns the `Context` instance back to the pool.
+// You must call it after `AcquireContext()`.
+func (e *Vodka) ReleaseContext(c Context) {
+	e.pool.Put(c)
+}
+
+func (e *Vodka) ServeHTTP(req engine.Request, res engine.Response) {
+	c := e.pool.Get().(*vodkaContext)
+	c.Reset(req, res)
+
+	// Middleware
+	h := func(Context) error {
+		method := req.Method()
+		path := req.URL().Path()
+		e.router.Find(method, path, c)
+		h := c.handler
+		for i := len(e.middleware) - 1; i >= 0; i-- {
+			h = e.middleware[i](h)
+		}
+		return h(c)
+	}
+
+	// Premiddleware
+	for i := len(e.premiddleware) - 1; i >= 0; i-- {
+		h = e.premiddleware[i](h)
 	}
 
 	// Execute chain
@@ -487,205 +568,54 @@ func (e *Vodka) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e.pool.Put(c)
 }
 
-// Server returns the internal *http.Server.
-func (e *Vodka) Server(addr string) *http.Server {
-	s := &http.Server{Addr: addr}
-	s.Handler = e
-	if e.http2 {
-		http2.ConfigureServer(s, nil)
+// Run starts the HTTP server.
+func (e *Vodka) Run(s engine.Server) error {
+	e.server = s
+	s.SetHandler(e)
+	s.SetLogger(e.logger)
+	if e.Debug() {
+		e.SetLogLevel(glog.DEBUG)
+		e.logger.Debug("running in debug mode")
 	}
-	return s
+	return s.Start()
 }
 
-func GetAddress(args ...interface{}) string {
-
-	var host string
-	var port int
-
-	if len(args) == 1 {
-		switch arg := args[0].(type) {
-		case string:
-			addrs := strings.Split(args[0].(string), ":")
-			if len(addrs) == 1 {
-				host = addrs[0]
-			} else if len(addrs) >= 2 {
-				host = addrs[0]
-				_port, _ := strconv.ParseInt(addrs[1], 10, 0)
-				port = int(_port)
-			}
-		case int:
-			port = arg
-		}
-	} else if len(args) >= 2 {
-		if arg, ok := args[0].(string); ok {
-			host = arg
-		}
-		if arg, ok := args[1].(int); ok {
-			port = arg
-		}
-	}
-
-	if host_ := os.Getenv("HOST"); len(host_) != 0 {
-		host = host_
-	} else if len(host) == 0 {
-		host = "0.0.0.0"
-	}
-
-	if port_, _ := strconv.ParseInt(os.Getenv("PORT"), 10, 32); port_ != 0 {
-		port = int(port_)
-	} else if port == 0 {
-		port = 8000
-	}
-
-	addr := host + ":" + strconv.FormatInt(int64(port), 10)
-
-	return addr
+// Stop stops the HTTP server.
+func (e *Vodka) Stop() error {
+	return e.server.Stop()
 }
 
-// Run runs a server.
-func (e *Vodka) Run(args ...interface{}) {
-	addr := GetAddress(args...)
-	fmt.Printf("[Vodka] Listening on http://%s\n", addr)
-	s := e.Server(addr)
-	e.run(s)
-}
-
-// RunTLS runs a server with TLS configuration.
-func (e *Vodka) RunTLS(certFile, keyFile string, args ...interface{}) {
-	addr := GetAddress(args...)
-	fmt.Printf("[Vodka] Listening on https://%s\n", addr)
-	s := e.Server(addr)
-	e.run(s, certFile, keyFile)
-}
-
-// RunServer runs a custom server.
-func (e *Vodka) RunServer(s *http.Server) {
-	e.run(s)
-}
-
-// RunTLSServer runs a custom server with TLS configuration.
-func (e *Vodka) RunTLSServer(s *http.Server, certFile, keyFile string) {
-	e.run(s, certFile, keyFile)
-}
-
-func (e *Vodka) run(s *http.Server, files ...string) {
-	if len(files) == 0 {
-		log.Fatal(s.ListenAndServe())
-	} else if len(files) == 2 {
-		log.Fatal(s.ListenAndServeTLS(files[0], files[1]))
-	} else {
-		log.Fatal("vodka > invalid TLS configuration")
-	}
-}
-
+// NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, msg ...string) *HTTPError {
-	he := &HTTPError{code: code, message: http.StatusText(code)}
+	he := &HTTPError{Code: code, Message: http.StatusText(code)}
 	if len(msg) > 0 {
 		m := msg[0]
-		he.message = m
+		he.Message = m
 	}
 	return he
 }
 
-// SetCode sets code.
-func (e *HTTPError) SetCode(code int) {
-	e.code = code
-}
-
-// Code returns code.
-func (e *HTTPError) Code() int {
-	return e.code
-}
-
-// Error returns message.
+// Error makes it compatible with `error` interface.
 func (e *HTTPError) Error() string {
-	return e.message
+	return e.Message
 }
 
-// wrapMiddleware wraps middleware.
-func wrapMiddleware(m Middleware) MiddlewareFunc {
-	switch m := m.(type) {
-	case MiddlewareFunc:
-		return m
-	case func(HandlerFunc) HandlerFunc:
-		return m
-	case HandlerFunc:
-		return wrapHandlerFuncMW(m)
-	case func(*Context) error:
-		return wrapHandlerFuncMW(m)
-	case func(http.Handler) http.Handler:
-		return func(h HandlerFunc) HandlerFunc {
-			return func(c *Context) (err error) {
-				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					c.response.writer = w
-					c.request = r
-					err = h(c)
-				})).ServeHTTP(c.response.writer, c.request)
-				return
-			}
-		}
-	case http.Handler:
-		return wrapHTTPHandlerFuncMW(m.ServeHTTP)
-	case func(http.ResponseWriter, *http.Request):
-		return wrapHTTPHandlerFuncMW(m)
-	default:
-		panic("vodka > unknown middleware")
-	}
-}
-
-// wrapHandlerFuncMW wraps HandlerFunc middleware.
-func wrapHandlerFuncMW(m HandlerFunc) MiddlewareFunc {
-	return func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) error {
-			if err := m(c); err != nil {
+// WrapMiddleware wrap `vodka.HandlerFunc` into `vodka.MiddlewareFunc`.
+func WrapMiddleware(h HandlerFunc) MiddlewareFunc {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(c Context) error {
+			if err := h(c); err != nil {
 				return err
 			}
-			return h(c)
+			return next(c)
 		}
 	}
 }
 
-// wrapHTTPHandlerFuncMW wraps http.HandlerFunc middleware.
-func wrapHTTPHandlerFuncMW(m http.HandlerFunc) MiddlewareFunc {
-	return func(h HandlerFunc) HandlerFunc {
-		return func(c *Context) error {
-			if !c.response.committed {
-				m.ServeHTTP(c.response.writer, c.request)
-			}
-			return h(c)
-		}
+func handlerName(h HandlerFunc) string {
+	t := reflect.ValueOf(h).Type()
+	if t.Kind() == reflect.Func {
+		return runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
 	}
-}
-
-// wrapHandler wraps handler.
-func wrapHandler(h Handler) HandlerFunc {
-	switch h := h.(type) {
-	case HandlerFunc:
-		return h
-	case func(*Context) error:
-		return h
-	case http.Handler, http.HandlerFunc:
-		return func(c *Context) error {
-			h.(http.Handler).ServeHTTP(c.response, c.request)
-			return nil
-		}
-	case func(http.ResponseWriter, *http.Request):
-		return func(c *Context) error {
-			h(c.response, c.request)
-			return nil
-		}
-	default:
-		panic("vodka > unknown handler")
-	}
-}
-
-func (binder) Bind(r *http.Request, i interface{}) (err error) {
-	ct := r.Header.Get(ContentType)
-	err = UnsupportedMediaType
-	if strings.HasPrefix(ct, ApplicationJSON) {
-		err = json.NewDecoder(r.Body).Decode(i)
-	} else if strings.HasPrefix(ct, ApplicationXML) {
-		err = xml.NewDecoder(r.Body).Decode(i)
-	}
-	return
+	return t.String()
 }
