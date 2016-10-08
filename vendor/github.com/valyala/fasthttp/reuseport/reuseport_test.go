@@ -27,7 +27,7 @@ func testNewListener(t *testing.T, network, addr string, serversCount, requestsC
 			t.Fatalf("cannot create listener %d: %s", i, err)
 		}
 		go func() {
-			serveEcho(t, ln)
+			serveVodka(t, ln)
 			doneCh <- struct{}{}
 		}()
 		lns = append(lns, ln)
@@ -83,7 +83,7 @@ func testNewListener(t *testing.T, network, addr string, serversCount, requestsC
 	}
 }
 
-func serveEcho(t *testing.T, ln net.Listener) {
+func serveVodka(t *testing.T, ln net.Listener) {
 	for {
 		c, err := ln.Accept()
 		if err != nil {

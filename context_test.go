@@ -2,18 +2,22 @@ package vodka
 
 import (
 	"bytes"
-	"context"
-	"encoding/xml"
 	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"text/template"
 	"time"
+
+	"strings"
+
+	gcontext "github.com/insionng/vodka/context"
+
+	"net/url"
+
+	"encoding/xml"
 
 	"github.com/insionng/vodka/test"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +37,7 @@ func TestContext(t *testing.T) {
 	e := New()
 	req := test.NewRequest(POST, "/", strings.NewReader(userJSON))
 	rec := test.NewResponseRecorder()
-	c := e.NewContext(req, rec).(*vodkaContext)
+	c := e.NewContext(req, rec).(*context)
 
 	// Vodka
 	assert.Equal(t, e, c.Vodka())
@@ -67,7 +71,7 @@ func TestContext(t *testing.T) {
 
 	// JSON
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -77,13 +81,13 @@ func TestContext(t *testing.T) {
 
 	// JSON (error)
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	err = c.JSON(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// JSONP
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	callback := "callback"
 	err = c.JSONP(http.StatusOK, callback, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
@@ -94,7 +98,7 @@ func TestContext(t *testing.T) {
 
 	// XML
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -104,13 +108,13 @@ func TestContext(t *testing.T) {
 
 	// XML (error)
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	err = c.XML(http.StatusOK, make(chan bool))
 	assert.Error(t, err)
 
 	// String
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	err = c.String(http.StatusOK, "Hello, World!")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -120,7 +124,7 @@ func TestContext(t *testing.T) {
 
 	// HTML
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	err = c.HTML(http.StatusOK, "Hello, <strong>World!</strong>")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
@@ -130,7 +134,7 @@ func TestContext(t *testing.T) {
 
 	// Stream
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	r := strings.NewReader("response from a stream")
 	err = c.Stream(http.StatusOK, "application/octet-stream", r)
 	if assert.NoError(t, err) {
@@ -141,7 +145,7 @@ func TestContext(t *testing.T) {
 
 	// Attachment
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	file, err := os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		err = c.Attachment(file, "walle.png")
@@ -154,7 +158,7 @@ func TestContext(t *testing.T) {
 
 	// Inline
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	file, err = os.Open("_fixture/images/walle.png")
 	if assert.NoError(t, err) {
 		err = c.Inline(file, "walle.png")
@@ -167,13 +171,13 @@ func TestContext(t *testing.T) {
 
 	// NoContent
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	c.NoContent(http.StatusOK)
 	assert.Equal(t, http.StatusOK, rec.Status())
 
 	// Error
 	rec = test.NewResponseRecorder()
-	c = e.NewContext(req, rec).(*vodkaContext)
+	c = e.NewContext(req, rec).(*context)
 	c.Error(errors.New("error"))
 	assert.Equal(t, http.StatusInternalServerError, rec.Status())
 
@@ -189,7 +193,7 @@ func TestContextCookie(t *testing.T) {
 	req.Header().Add(HeaderCookie, theme)
 	req.Header().Add(HeaderCookie, user)
 	rec := test.NewResponseRecorder()
-	c := e.NewContext(req, rec).(*vodkaContext)
+	c := e.NewContext(req, rec).(*context)
 
 	// Read single
 	cookie, err := c.Cookie("theme")
@@ -347,23 +351,16 @@ func TestContextRedirect(t *testing.T) {
 	assert.Error(t, c.Redirect(310, "http://insionng.github.io/vodka"))
 }
 
-func TestContextEmbedded(t *testing.T) {
-	var c Context
-	c = new(vodkaContext)
-	c.SetStdContext(context.WithValue(c, "key", "val"))
-	assert.Equal(t, "val", c.Value("key"))
-	now := time.Now()
-	ctx, _ := context.WithDeadline(context.Background(), now)
-	c.SetStdContext(ctx)
-	n, _ := ctx.Deadline()
-	assert.Equal(t, now, n)
-	assert.Equal(t, context.DeadlineExceeded, c.Err())
-	assert.NotNil(t, c.Done())
+func TestStdContextEmbedded(t *testing.T) {
+	c := new(context)
+	sc := gcontext.WithValue(nil, "key", "val")
+	c.SetStdContext(sc)
+	assert.NotEqual(t, c, c.StdContext())
 }
 
 func TestContextStore(t *testing.T) {
 	var c Context
-	c = new(vodkaContext)
+	c = new(context)
 	c.Set("name", "Jon Snow")
 	assert.Equal(t, "Jon Snow", c.Get("name"))
 }

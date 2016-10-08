@@ -527,7 +527,7 @@ func TestClientFollowRedirects(t *testing.T) {
 
 func TestClientGetTimeoutSuccess(t *testing.T) {
 	addr := "127.0.0.1:56889"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -536,7 +536,7 @@ func TestClientGetTimeoutSuccess(t *testing.T) {
 
 func TestClientGetTimeoutSuccessConcurrent(t *testing.T) {
 	addr := "127.0.0.1:56989"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -553,7 +553,7 @@ func TestClientGetTimeoutSuccessConcurrent(t *testing.T) {
 
 func TestClientDoTimeoutSuccess(t *testing.T) {
 	addr := "127.0.0.1:63897"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -562,7 +562,7 @@ func TestClientDoTimeoutSuccess(t *testing.T) {
 
 func TestClientDoTimeoutSuccessConcurrent(t *testing.T) {
 	addr := "127.0.0.1:63898"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -774,11 +774,11 @@ func (r *singleReadConn) Close() error {
 
 func TestClientHTTPSConcurrent(t *testing.T) {
 	addrHTTP := "127.0.0.1:56793"
-	sHTTP := startEchoServer(t, "tcp", addrHTTP)
+	sHTTP := startVodkaServer(t, "tcp", addrHTTP)
 	defer sHTTP.Stop()
 
 	addrHTTPS := "127.0.0.1:56794"
-	sHTTPS := startEchoServerTLS(t, "tcp", addrHTTPS)
+	sHTTPS := startVodkaServerTLS(t, "tcp", addrHTTPS)
 	defer sHTTPS.Stop()
 
 	var wg sync.WaitGroup
@@ -801,7 +801,7 @@ func TestClientManyServers(t *testing.T) {
 	var addrs []string
 	for i := 0; i < 10; i++ {
 		addr := fmt.Sprintf("127.0.0.1:%d", 56904+i)
-		s := startEchoServer(t, "tcp", addr)
+		s := startVodkaServer(t, "tcp", addr)
 		defer s.Stop()
 		addrs = append(addrs, addr)
 	}
@@ -821,7 +821,7 @@ func TestClientManyServers(t *testing.T) {
 
 func TestClientGet(t *testing.T) {
 	addr := "127.0.0.1:56789"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -830,7 +830,7 @@ func TestClientGet(t *testing.T) {
 
 func TestClientPost(t *testing.T) {
 	addr := "127.0.0.1:56798"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -839,7 +839,7 @@ func TestClientPost(t *testing.T) {
 
 func TestClientConcurrent(t *testing.T) {
 	addr := "127.0.0.1:55780"
-	s := startEchoServer(t, "tcp", addr)
+	s := startVodkaServer(t, "tcp", addr)
 	defer s.Stop()
 
 	addr = "http://" + addr
@@ -868,9 +868,9 @@ func skipIfNotUnix(tb testing.TB) {
 func TestHostClientGet(t *testing.T) {
 	skipIfNotUnix(t)
 	addr := "TestHostClientGet.unix"
-	s := startEchoServer(t, "unix", addr)
+	s := startVodkaServer(t, "unix", addr)
 	defer s.Stop()
-	c := createEchoClient(t, "unix", addr)
+	c := createVodkaClient(t, "unix", addr)
 
 	testHostClientGet(t, c, 100)
 }
@@ -878,9 +878,9 @@ func TestHostClientGet(t *testing.T) {
 func TestHostClientPost(t *testing.T) {
 	skipIfNotUnix(t)
 	addr := "./TestHostClientPost.unix"
-	s := startEchoServer(t, "unix", addr)
+	s := startVodkaServer(t, "unix", addr)
 	defer s.Stop()
-	c := createEchoClient(t, "unix", addr)
+	c := createVodkaClient(t, "unix", addr)
 
 	testHostClientPost(t, c, 100)
 }
@@ -888,9 +888,9 @@ func TestHostClientPost(t *testing.T) {
 func TestHostClientConcurrent(t *testing.T) {
 	skipIfNotUnix(t)
 	addr := "./TestHostClientConcurrent.unix"
-	s := startEchoServer(t, "unix", addr)
+	s := startVodkaServer(t, "unix", addr)
 	defer s.Stop()
-	c := createEchoClient(t, "unix", addr)
+	c := createVodkaClient(t, "unix", addr)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -1010,7 +1010,7 @@ type clientGetter interface {
 	Get(dst []byte, uri string) (int, []byte, error)
 }
 
-func createEchoClient(t *testing.T, network, addr string) *HostClient {
+func createVodkaClient(t *testing.T, network, addr string) *HostClient {
 	return &HostClient{
 		Addr: addr,
 		Dial: func(addr string) (net.Conn, error) {
@@ -1019,14 +1019,14 @@ func createEchoClient(t *testing.T, network, addr string) *HostClient {
 	}
 }
 
-type testEchoServer struct {
+type testVodkaServer struct {
 	s  *Server
 	ln net.Listener
 	ch chan struct{}
 	t  *testing.T
 }
 
-func (s *testEchoServer) Stop() {
+func (s *testVodkaServer) Stop() {
 	s.ln.Close()
 	select {
 	case <-s.ch:
@@ -1035,15 +1035,15 @@ func (s *testEchoServer) Stop() {
 	}
 }
 
-func startEchoServerTLS(t *testing.T, network, addr string) *testEchoServer {
-	return startEchoServerExt(t, network, addr, true)
+func startVodkaServerTLS(t *testing.T, network, addr string) *testVodkaServer {
+	return startVodkaServerExt(t, network, addr, true)
 }
 
-func startEchoServer(t *testing.T, network, addr string) *testEchoServer {
-	return startEchoServerExt(t, network, addr, false)
+func startVodkaServer(t *testing.T, network, addr string) *testVodkaServer {
+	return startVodkaServerExt(t, network, addr, false)
 }
 
-func startEchoServerExt(t *testing.T, network, addr string, isTLS bool) *testEchoServer {
+func startVodkaServerExt(t *testing.T, network, addr string, isTLS bool) *testVodkaServer {
 	if network == "unix" {
 		os.Remove(addr)
 	}
@@ -1084,7 +1084,7 @@ func startEchoServerExt(t *testing.T, network, addr string, isTLS bool) *testEch
 		}
 		close(ch)
 	}()
-	return &testEchoServer{
+	return &testVodkaServer{
 		s:  s,
 		ln: ln,
 		ch: ch,

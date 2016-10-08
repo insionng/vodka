@@ -33,13 +33,12 @@ Example:
 	    e.Run(standard.New(":1323"))
 	}
 
-Learn more at https://github.com/insionng/vodka
+Learn more at https://vodka.insionng.com
 */
 package vodka
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -49,6 +48,7 @@ import (
 	"runtime"
 	"sync"
 
+	gcontext "github.com/insionng/vodka/context"
 	"github.com/insionng/vodka/engine"
 	glog "github.com/insionng/vodka/libraries/gommon/log"
 	"github.com/insionng/vodka/log"
@@ -237,13 +237,14 @@ func New() (e *Vodka) {
 
 // NewContext returns a Context instance.
 func (e *Vodka) NewContext(req engine.Request, res engine.Response) Context {
-	return &vodkaContext{
-		context:  context.Background(),
-		request:  req,
-		response: res,
-		vodka:    e,
-		pvalues:  make([]string, *e.maxParam),
-		handler:  NotFoundHandler,
+	return &context{
+		stdContext: gcontext.Background(),
+		request:    req,
+		response:   res,
+		store:      make(store),
+		vodka:      e,
+		pvalues:    make([]string, *e.maxParam),
+		handler:    NotFoundHandler,
 	}
 }
 
@@ -540,7 +541,7 @@ func (e *Vodka) ReleaseContext(c Context) {
 }
 
 func (e *Vodka) ServeHTTP(req engine.Request, res engine.Response) {
-	c := e.pool.Get().(*vodkaContext)
+	c := e.pool.Get().(*context)
 	c.Reset(req, res)
 
 	// Middleware

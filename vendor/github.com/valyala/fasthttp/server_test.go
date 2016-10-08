@@ -1537,7 +1537,7 @@ func TestRequestCtxHijack(t *testing.T) {
 				<-hijackStartCh
 
 				b := make([]byte, 1)
-				// ping-pong echo via hijacked conn
+				// ping-pong vodka via hijacked conn
 				for {
 					n, err := c.Read(b)
 					if n != 1 {

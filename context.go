@@ -17,20 +17,18 @@ import (
 
 	"bytes"
 
-	"github.com/insionng/vodka/context"
+	gcontext "github.com/insionng/vodka/context"
 )
 
 type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
-		context.Context
-
 		// StdContext returns `context.Context`.
-		StdContext() context.Context
+		StdContext() gcontext.Context
 
 		// SetStdContext sets `context.Context`.
-		SetStdContext(context.Context)
+		SetStdContext(gcontext.Context)
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
@@ -187,63 +185,50 @@ type (
 		Reset(engine.Request, engine.Response)
 	}
 
-	vodkaContext struct {
-		context  context.Context
-		request  engine.Request
-		response engine.Response
-		path     string
-		pnames   []string
-		pvalues  []string
-		handler  HandlerFunc
-		vodka     *Vodka
+	context struct {
+		stdContext gcontext.Context
+		request    engine.Request
+		response   engine.Response
+		path       string
+		pnames     []string
+		pvalues    []string
+		handler    HandlerFunc
+		store      store
+		vodka       *Vodka
 	}
+
+	store map[string]interface{}
 )
 
 const (
 	indexPage = "index.html"
 )
 
-func (c *vodkaContext) StdContext() context.Context {
-	return c.context
+func (c *context) StdContext() gcontext.Context {
+	return c.stdContext
 }
 
-func (c *vodkaContext) SetStdContext(ctx context.Context) {
-	c.context = ctx
+func (c *context) SetStdContext(ctx gcontext.Context) {
+	c.stdContext = ctx
 }
 
-func (c *vodkaContext) Deadline() (deadline time.Time, ok bool) {
-	return c.context.Deadline()
-}
-
-func (c *vodkaContext) Done() <-chan struct{} {
-	return c.context.Done()
-}
-
-func (c *vodkaContext) Err() error {
-	return c.context.Err()
-}
-
-func (c *vodkaContext) Value(key interface{}) interface{} {
-	return c.context.Value(key)
-}
-
-func (c *vodkaContext) Request() engine.Request {
+func (c *context) Request() engine.Request {
 	return c.request
 }
 
-func (c *vodkaContext) Response() engine.Response {
+func (c *context) Response() engine.Response {
 	return c.response
 }
 
-func (c *vodkaContext) Path() string {
+func (c *context) Path() string {
 	return c.path
 }
 
-func (c *vodkaContext) SetPath(p string) {
+func (c *context) SetPath(p string) {
 	c.path = p
 }
 
-func (c *vodkaContext) P(i int) (value string) {
+func (c *context) P(i int) (value string) {
 	l := len(c.pnames)
 	if i < l {
 		value = c.pvalues[i]
@@ -251,7 +236,7 @@ func (c *vodkaContext) P(i int) (value string) {
 	return
 }
 
-func (c *vodkaContext) Param(name string) (value string) {
+func (c *context) Param(name string) (value string) {
 	l := len(c.pnames)
 	for i, n := range c.pnames {
 		if n == name && i < l {
@@ -262,71 +247,74 @@ func (c *vodkaContext) Param(name string) (value string) {
 	return
 }
 
-func (c *vodkaContext) ParamNames() []string {
+func (c *context) ParamNames() []string {
 	return c.pnames
 }
 
-func (c *vodkaContext) SetParamNames(names ...string) {
+func (c *context) SetParamNames(names ...string) {
 	c.pnames = names
 }
 
-func (c *vodkaContext) ParamValues() []string {
+func (c *context) ParamValues() []string {
 	return c.pvalues
 }
 
-func (c *vodkaContext) SetParamValues(values ...string) {
+func (c *context) SetParamValues(values ...string) {
 	c.pvalues = values
 }
 
-func (c *vodkaContext) QueryParam(name string) string {
+func (c *context) QueryParam(name string) string {
 	return c.request.URL().QueryParam(name)
 }
 
-func (c *vodkaContext) QueryParams() map[string][]string {
+func (c *context) QueryParams() map[string][]string {
 	return c.request.URL().QueryParams()
 }
 
-func (c *vodkaContext) FormValue(name string) string {
+func (c *context) FormValue(name string) string {
 	return c.request.FormValue(name)
 }
 
-func (c *vodkaContext) FormParams() map[string][]string {
+func (c *context) FormParams() map[string][]string {
 	return c.request.FormParams()
 }
 
-func (c *vodkaContext) FormFile(name string) (*multipart.FileHeader, error) {
+func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
 	return c.request.FormFile(name)
 }
 
-func (c *vodkaContext) MultipartForm() (*multipart.Form, error) {
+func (c *context) MultipartForm() (*multipart.Form, error) {
 	return c.request.MultipartForm()
 }
 
-func (c *vodkaContext) Cookie(name string) (engine.Cookie, error) {
+func (c *context) Cookie(name string) (engine.Cookie, error) {
 	return c.request.Cookie(name)
 }
 
-func (c *vodkaContext) SetCookie(cookie engine.Cookie) {
+func (c *context) SetCookie(cookie engine.Cookie) {
 	c.response.SetCookie(cookie)
 }
 
-func (c *vodkaContext) Cookies() []engine.Cookie {
+func (c *context) Cookies() []engine.Cookie {
 	return c.request.Cookies()
 }
 
-func (c *vodkaContext) Set(key string, val interface{}) {
-	c.context = context.WithValue(c.context, key, val)
+func (c *context) Set(key string, val interface{}) {
+	if c.store == nil {
+		c.store = make(store)
+	}
+	c.store[key] = val
 }
 
-func (c *vodkaContext) Get(key string) interface{} {
-	return c.context.Value(key)
+func (c *context) Get(key string) interface{} {
+	return c.store[key]
 }
 
-func (c *vodkaContext) Bind(i interface{}) error {
+func (c *context) Bind(i interface{}) error {
 	return c.vodka.binder.Bind(i, c)
 }
 
-func (c *vodkaContext) Render(code int, name string, data interface{}) (err error) {
+func (c *context) Render(code int, name string, data interface{}) (err error) {
 	if c.vodka.renderer == nil {
 		return ErrRendererNotRegistered
 	}
@@ -340,21 +328,21 @@ func (c *vodkaContext) Render(code int, name string, data interface{}) (err erro
 	return
 }
 
-func (c *vodkaContext) HTML(code int, html string) (err error) {
+func (c *context) HTML(code int, html string) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write([]byte(html))
 	return
 }
 
-func (c *vodkaContext) String(code int, s string) (err error) {
+func (c *context) String(code int, s string) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMETextPlainCharsetUTF8)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write([]byte(s))
 	return
 }
 
-func (c *vodkaContext) JSON(code int, i interface{}) (err error) {
+func (c *context) JSON(code int, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if c.vodka.Debug() {
 		b, err = json.MarshalIndent(i, "", "  ")
@@ -365,11 +353,11 @@ func (c *vodkaContext) JSON(code int, i interface{}) (err error) {
 	return c.JSONBlob(code, b)
 }
 
-func (c *vodkaContext) JSONBlob(code int, b []byte) (err error) {
+func (c *context) JSONBlob(code int, b []byte) (err error) {
 	return c.Blob(code, MIMEApplicationJSONCharsetUTF8, b)
 }
 
-func (c *vodkaContext) JSONP(code int, callback string, i interface{}) (err error) {
+func (c *context) JSONP(code int, callback string, i interface{}) (err error) {
 	b, err := json.Marshal(i)
 	if err != nil {
 		return err
@@ -377,7 +365,7 @@ func (c *vodkaContext) JSONP(code int, callback string, i interface{}) (err erro
 	return c.JSONPBlob(code, callback, b)
 }
 
-func (c *vodkaContext) JSONPBlob(code int, callback string, b []byte) (err error) {
+func (c *context) JSONPBlob(code int, callback string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, MIMEApplicationJavaScriptCharsetUTF8)
 	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(callback + "(")); err != nil {
@@ -390,7 +378,7 @@ func (c *vodkaContext) JSONPBlob(code int, callback string, b []byte) (err error
 	return
 }
 
-func (c *vodkaContext) XML(code int, i interface{}) (err error) {
+func (c *context) XML(code int, i interface{}) (err error) {
 	b, err := xml.Marshal(i)
 	if c.vodka.Debug() {
 		b, err = xml.MarshalIndent(i, "", "  ")
@@ -401,28 +389,28 @@ func (c *vodkaContext) XML(code int, i interface{}) (err error) {
 	return c.XMLBlob(code, b)
 }
 
-func (c *vodkaContext) XMLBlob(code int, b []byte) (err error) {
+func (c *context) XMLBlob(code int, b []byte) (err error) {
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
 	return c.Blob(code, MIMEApplicationXMLCharsetUTF8, b)
 }
 
-func (c *vodkaContext) Blob(code int, contentType string, b []byte) (err error) {
+func (c *context) Blob(code int, contentType string, b []byte) (err error) {
 	c.response.Header().Set(HeaderContentType, contentType)
 	c.response.WriteHeader(code)
 	_, err = c.response.Write(b)
 	return
 }
 
-func (c *vodkaContext) Stream(code int, contentType string, r io.Reader) (err error) {
+func (c *context) Stream(code int, contentType string, r io.Reader) (err error) {
 	c.response.Header().Set(HeaderContentType, contentType)
 	c.response.WriteHeader(code)
 	_, err = io.Copy(c.response, r)
 	return
 }
 
-func (c *vodkaContext) File(file string) error {
+func (c *context) File(file string) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return ErrNotFound
@@ -443,15 +431,15 @@ func (c *vodkaContext) File(file string) error {
 	return c.ServeContent(f, fi.Name(), fi.ModTime())
 }
 
-func (c *vodkaContext) Attachment(r io.ReadSeeker, name string) (err error) {
+func (c *context) Attachment(r io.ReadSeeker, name string) (err error) {
 	return c.contentDisposition(r, name, "attachment")
 }
 
-func (c *vodkaContext) Inline(r io.ReadSeeker, name string) (err error) {
+func (c *context) Inline(r io.ReadSeeker, name string) (err error) {
 	return c.contentDisposition(r, name, "inline")
 }
 
-func (c *vodkaContext) contentDisposition(r io.ReadSeeker, name, dispositionType string) (err error) {
+func (c *context) contentDisposition(r io.ReadSeeker, name, dispositionType string) (err error) {
 	c.response.Header().Set(HeaderContentType, ContentTypeByExtension(name))
 	c.response.Header().Set(HeaderContentDisposition, fmt.Sprintf("%s; filename=%s", dispositionType, name))
 	c.response.WriteHeader(http.StatusOK)
@@ -459,12 +447,12 @@ func (c *vodkaContext) contentDisposition(r io.ReadSeeker, name, dispositionType
 	return
 }
 
-func (c *vodkaContext) NoContent(code int) error {
+func (c *context) NoContent(code int) error {
 	c.response.WriteHeader(code)
 	return nil
 }
 
-func (c *vodkaContext) Redirect(code int, url string) error {
+func (c *context) Redirect(code int, url string) error {
 	if code < http.StatusMultipleChoices || code > http.StatusTemporaryRedirect {
 		return ErrInvalidRedirectCode
 	}
@@ -473,27 +461,27 @@ func (c *vodkaContext) Redirect(code int, url string) error {
 	return nil
 }
 
-func (c *vodkaContext) Error(err error) {
+func (c *context) Error(err error) {
 	c.vodka.httpErrorHandler(err, c)
 }
 
-func (c *vodkaContext) Vodka() *Vodka {
+func (c *context) Vodka() *Vodka {
 	return c.vodka
 }
 
-func (c *vodkaContext) Handler() HandlerFunc {
+func (c *context) Handler() HandlerFunc {
 	return c.handler
 }
 
-func (c *vodkaContext) SetHandler(h HandlerFunc) {
+func (c *context) SetHandler(h HandlerFunc) {
 	c.handler = h
 }
 
-func (c *vodkaContext) Logger() log.Logger {
+func (c *context) Logger() log.Logger {
 	return c.vodka.logger
 }
 
-func (c *vodkaContext) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
+func (c *context) ServeContent(content io.ReadSeeker, name string, modtime time.Time) error {
 	req := c.Request()
 	res := c.Response()
 
@@ -520,9 +508,10 @@ func ContentTypeByExtension(name string) (t string) {
 	return
 }
 
-func (c *vodkaContext) Reset(req engine.Request, res engine.Response) {
-	c.context = context.Background()
+func (c *context) Reset(req engine.Request, res engine.Response) {
+	c.stdContext = gcontext.Background()
 	c.request = req
 	c.response = res
+	c.store = nil
 	c.handler = NotFoundHandler
 }

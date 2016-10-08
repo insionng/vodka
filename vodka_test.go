@@ -12,8 +12,8 @@ import (
 
 	"errors"
 
-	"github.com/insionng/vodka/test"
 	"github.com/insionng/vodka/libraries/gommon/log"
+	"github.com/insionng/vodka/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -333,7 +333,7 @@ func TestVodkaHTTPError(t *testing.T) {
 func TestVodkaContext(t *testing.T) {
 	e := New()
 	c := e.AcquireContext()
-	assert.IsType(t, new(vodkaContext), c)
+	assert.IsType(t, new(context), c)
 	e.ReleaseContext(c)
 }
 

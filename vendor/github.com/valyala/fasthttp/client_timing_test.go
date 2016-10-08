@@ -167,11 +167,11 @@ func BenchmarkNetHTTPClientDoFastServer(b *testing.B) {
 	})
 }
 
-func fasthttpEchoHandler(ctx *RequestCtx) {
+func fasthttpVodkaHandler(ctx *RequestCtx) {
 	ctx.Success("text/plain", ctx.RequestURI())
 }
 
-func nethttpEchoHandler(w http.ResponseWriter, r *http.Request) {
+func nethttpVodkaHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(r.RequestURI))
 }
@@ -198,7 +198,7 @@ func benchmarkClientGetEndToEndTCP(b *testing.B, parallelism int) {
 
 	ch := make(chan struct{})
 	go func() {
-		if err := Serve(ln, fasthttpEchoHandler); err != nil {
+		if err := Serve(ln, fasthttpVodkaHandler); err != nil {
 			b.Fatalf("error when serving requests: %s", err)
 		}
 		close(ch)
@@ -258,7 +258,7 @@ func benchmarkNetHTTPClientGetEndToEndTCP(b *testing.B, parallelism int) {
 
 	ch := make(chan struct{})
 	go func() {
-		if err := http.Serve(ln, http.HandlerFunc(nethttpEchoHandler)); err != nil && !strings.Contains(
+		if err := http.Serve(ln, http.HandlerFunc(nethttpVodkaHandler)); err != nil && !strings.Contains(
 			err.Error(), "use of closed network connection") {
 			b.Fatalf("error when serving requests: %s", err)
 		}
@@ -327,7 +327,7 @@ func benchmarkClientGetEndToEndInmemory(b *testing.B, parallelism int) {
 
 	ch := make(chan struct{})
 	go func() {
-		if err := Serve(ln, fasthttpEchoHandler); err != nil {
+		if err := Serve(ln, fasthttpVodkaHandler); err != nil {
 			b.Fatalf("error when serving requests: %s", err)
 		}
 		close(ch)
@@ -387,7 +387,7 @@ func benchmarkNetHTTPClientGetEndToEndInmemory(b *testing.B, parallelism int) {
 
 	ch := make(chan struct{})
 	go func() {
-		if err := http.Serve(ln, http.HandlerFunc(nethttpEchoHandler)); err != nil && !strings.Contains(
+		if err := http.Serve(ln, http.HandlerFunc(nethttpVodkaHandler)); err != nil && !strings.Contains(
 			err.Error(), "use of closed network connection") {
 			b.Fatalf("error when serving requests: %s", err)
 		}

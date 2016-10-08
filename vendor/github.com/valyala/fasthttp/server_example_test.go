@@ -90,7 +90,7 @@ func ExampleRequestCtx_Hijack() {
 	// hijackHandler is called on hijacked connection.
 	hijackHandler := func(c net.Conn) {
 		fmt.Fprintf(c, "This message is sent over a hijacked connection to the client %s\n", c.RemoteAddr())
-		fmt.Fprintf(c, "Send me something and I'll echo it to you\n")
+		fmt.Fprintf(c, "Send me something and I'll vodka it to you\n")
 		var buf [1]byte
 		for {
 			if _, err := c.Read(buf[:]); err != nil {
