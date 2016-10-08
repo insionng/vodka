@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/insionng/vodka"
+	"github.com/insionng/vodka/libraries/femplate"
 	"github.com/insionng/vodka/libraries/gommon/color"
 	isatty "github.com/mattn/go-isatty"
-	"github.com/valyala/fasttemplate"
 )
 
 type (
@@ -46,7 +46,7 @@ type (
 		// Optional. Default value os.Stdout.
 		Output io.Writer
 
-		template   *fasttemplate.Template
+		template   *femplate.Template
 		color      *color.Color
 		bufferPool sync.Pool
 	}
@@ -84,7 +84,7 @@ func LoggerWithConfig(config LoggerConfig) vodka.MiddlewareFunc {
 		config.Output = DefaultLoggerConfig.Output
 	}
 
-	config.template = fasttemplate.New(config.Format, "${", "}")
+	config.template = femplate.New(config.Format, "${", "}")
 	config.color = color.New()
 	if w, ok := config.Output.(*os.File); !ok || !isatty.IsTerminal(w.Fd()) {
 		config.color.Disable()

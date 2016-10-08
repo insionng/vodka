@@ -13,10 +13,9 @@ import (
 
 	"strconv"
 
-	"github.com/mattn/go-isatty"
-	"github.com/valyala/fasttemplate"
-
+	"github.com/insionng/vodka/libraries/femplate"
 	"github.com/insionng/vodka/libraries/gommon/color"
+	"github.com/mattn/go-isatty"
 )
 
 type (
@@ -24,7 +23,7 @@ type (
 		prefix     string
 		level      Lvl
 		output     io.Writer
-		template   *fasttemplate.Template
+		template   *femplate.Template
 		levels     []string
 		color      *color.Color
 		bufferPool sync.Pool
@@ -78,8 +77,8 @@ func (l *Logger) initLevels() {
 	}
 }
 
-func (l *Logger) newTemplate(format string) *fasttemplate.Template {
-	return fasttemplate.New(format, "${", "}")
+func (l *Logger) newTemplate(format string) *femplate.Template {
+	return femplate.New(format, "${", "}")
 }
 
 func (l *Logger) DisableColor() {
