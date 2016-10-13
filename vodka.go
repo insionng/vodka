@@ -100,7 +100,7 @@ type (
 
 	// Renderer is the interface that wraps the Render function.
 	Renderer interface {
-		Render(io.Writer, string, interface{}, Context) error
+		Render(io.Writer, string, Context) error
 	}
 )
 

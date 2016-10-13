@@ -102,13 +102,19 @@ type (
 		// Set saves data in the context.
 		Set(string, interface{})
 
+		// GetStore retrieves map data from the context.
+		GetStore() map[string]interface{}
+
+		// SetStore saves map data in the context.
+		SetStore(map[string]interface{})
+
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
 		Bind(interface{}) error
 
 		// Render renders a template with data and sends a text/html response with status
 		// code. Templates can be registered using `Vodka.SetRenderer()`.
-		Render(int, string, interface{}) error
+		Render(int, string) error
 
 		// HTML sends an HTTP response with status code.
 		HTML(int, string) error
@@ -194,7 +200,7 @@ type (
 		pvalues    []string
 		handler    HandlerFunc
 		store      store
-		vodka       *Vodka
+		vodka      *Vodka
 	}
 
 	store map[string]interface{}
@@ -310,16 +316,29 @@ func (c *context) Get(key string) interface{} {
 	return c.store[key]
 }
 
+func (c *context) SetStore(data map[string]interface{}) {
+	if c.store == nil {
+		c.store = make(store)
+	}
+	for k, v := range data {
+		c.store[k] = v
+	}
+}
+
+func (c *context) GetStore() map[string]interface{} {
+	return c.store
+}
+
 func (c *context) Bind(i interface{}) error {
 	return c.vodka.binder.Bind(i, c)
 }
 
-func (c *context) Render(code int, name string, data interface{}) (err error) {
+func (c *context) Render(code int, filename string) (err error) {
 	if c.vodka.renderer == nil {
 		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
-	if err = c.vodka.renderer.Render(buf, name, data, c); err != nil {
+	if err = c.vodka.renderer.Render(buf, filename, c); err != nil {
 		return
 	}
 	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)

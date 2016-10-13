@@ -18,7 +18,7 @@ import (
 	"net/url"
 
 	"encoding/xml"
-
+	//"github.com/vodka-contrib/pongor"
 	"github.com/insionng/vodka/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,8 +29,8 @@ type (
 	}
 )
 
-func (t *Template) Render(w io.Writer, name string, data interface{}, c Context) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+func (t *Template) Render(w io.Writer, filename string, c Context) error {
+	return t.templates.ExecuteTemplate(w, filename, c.GetStore())
 }
 
 func TestContext(t *testing.T) {
@@ -56,17 +56,19 @@ func TestContext(t *testing.T) {
 	//--------
 
 	tpl := &Template{
-		templates: template.Must(template.New("hello").Parse("Hello, {{.}}!")),
+		templates: template.Must(template.New("hello").Parse("Hello, {{.name}}!")),
 	}
 	c.vodka.SetRenderer(tpl)
-	err := c.Render(http.StatusOK, "hello", "Jon Snow")
+	c.Set("name", "Insion Ng")
+	err := c.Render(http.StatusOK, "hello")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, "Hello, Jon Snow!", rec.Body.String())
+		assert.Equal(t, "Hello, Insion Ng!", rec.Body.String())
 	}
 
 	c.vodka.renderer = nil
-	err = c.Render(http.StatusOK, "hello", "Jon Snow")
+	c.Set("name", "Vodka V2+")
+	err = c.Render(http.StatusOK, "hello")
 	assert.Error(t, err)
 
 	// JSON
