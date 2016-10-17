@@ -327,14 +327,6 @@ Community created packages for Vodka
 - [ZenPress](https://github.com/insionng/zenpress) - Cms/Blog System(just start-up)
 
 
-
-## Credits
-- [Vishal Rana](https://github.com/vishr) - Echo Author
-- [Nitin Rana](https://github.com/nr17) - Consultant
-- [Contributors](https://github.com/labstack/echo/graphs/contributors)
-- [Insion Ng](https://github.com/insionng) - Vodka Author
-
-
 ## Donation
     BTC:1JHtavsBqBNGxpR4eLNwjYL9Vjbyr3Tw6T
 
