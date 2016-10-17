@@ -6,7 +6,7 @@ type (
 	Router struct {
 		tree   *node
 		routes map[string]Route
-		vodka   *Vodka
+		vodka  *Vodka
 	}
 	node struct {
 		kind          kind
@@ -46,7 +46,7 @@ func NewRouter(e *Vodka) *Router {
 			methodHandler: new(methodHandler),
 		},
 		routes: make(map[string]Route),
-		vodka:   e,
+		vodka:  e,
 	}
 }
 
@@ -343,7 +343,7 @@ func (r *Router) Find(method, path string, context Context) {
 		// Static node
 		if c = cn.findChild(search[0], skind); c != nil {
 			// Save next
-			if cn.label == '/' {
+			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = pkind
 				nn = cn
 				ns = search
@@ -361,7 +361,7 @@ func (r *Router) Find(method, path string, context Context) {
 			}
 
 			// Save next
-			if cn.label == '/' {
+			if cn.prefix[len(cn.prefix)-1] == '/' { // Issue #623
 				nk = akind
 				nn = cn
 				ns = search

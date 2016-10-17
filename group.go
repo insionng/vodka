@@ -9,7 +9,7 @@ type (
 	Group struct {
 		prefix     string
 		middleware []MiddlewareFunc
-		vodka       *Vodka
+		vodka      *Vodka
 	}
 )
 

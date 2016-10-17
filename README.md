@@ -335,6 +335,9 @@ Community created packages for Vodka
 - [Insion Ng](https://github.com/insionng) - Vodka Author
 
 
+## Donation
+    BTC:1JHtavsBqBNGxpR4eLNwjYL9Vjbyr3Tw6T
+
 ## License
     MIT License
 
