@@ -145,7 +145,7 @@ func show(c vodka.Context) error {
 name | value
 :--- | :---
 name | Joe Smith
-email | joe@example.com
+email | vodka@yougam.com
 
 
 ```go
@@ -163,7 +163,7 @@ func save(c vodka.Context) error {
 name | value
 :--- | :---
 name | Joe Smith
-email | joe@example.com
+email | joe@yougam.com
 avatar | avatar
 
 ```go
@@ -230,9 +230,9 @@ Server any file from static directory for path `/static/*`.
 e.Static("/static", "static")
 ```
 
-##### [Learn More](https://vodka.labstack.com/guide/static-files)
+##### [Learn More](https://github.com/insionng/vodka/blob/master/docs/guide/static-files)
 
-### [Template Rendering](https://vodka.labstack.com/guide/templates)
+### [Template Rendering](https://github.com/insionng/vodka/blob/master/docs/guide/templates)
 
 ### Middleware
 
@@ -266,25 +266,25 @@ e.GET("/users", func(c vodka.Context) error {
 
 Middleware | Description
 :--- | :---
-[BodyLimit](https://vodka.labstack.com/middleware/body-limit) | Limit request body
-[Logger](https://vodka.labstack.com/middleware/logger) | Log HTTP requests
-[Recover](https://vodka.labstack.com/middleware/recover) | Recover from panics
-[Gzip](https://vodka.labstack.com/middleware/gzip) | Send gzip HTTP response
-[BasicAuth](https://vodka.labstack.com/middleware/basic-auth) | HTTP basic authentication
-[JWTAuth](https://vodka.labstack.com/middleware/jwt) | JWT authentication
-[Secure](https://vodka.labstack.com/middleware/secure) | Protection against attacks
-[CORS](https://vodka.labstack.com/middleware/cors) | Cross-Origin Resource Sharing
-[CSRF](https://vodka.labstack.com/middleware/csrf) | Cross-Site Request Forgery
-[Static](https://vodka.labstack.com/middleware/static) | Serve static files
-[HTTPSRedirect](https://vodka.labstack.com/middleware/redirect#httpsredirect-middleware) | Redirect HTTP requests to HTTPS
-[HTTPSWWWRedirect](https://vodka.labstack.com/middleware/redirect#httpswwwredirect-middleware) | Redirect HTTP requests to WWW HTTPS
-[WWWRedirect](https://vodka.labstack.com/middleware/redirect#wwwredirect-middleware) | Redirect non WWW requests to WWW
-[NonWWWRedirect](https://vodka.labstack.com/middleware/redirect#nonwwwredirect-middleware) | Redirect WWW requests to non WWW
-[AddTrailingSlash](https://vodka.labstack.com/middleware/trailing-slash#addtrailingslash-middleware) | Add trailing slash to the request URI
-[RemoveTrailingSlash](https://vodka.labstack.com/middleware/trailing-slash#removetrailingslash-middleware) | Remove trailing slash from the request URI
-[MethodOverride](https://vodka.labstack.com/middleware/method-override) | Override request method
+[BodyLimit](https://github.com/insionng/vodka/blob/master/docs/middleware/body-limit) | Limit request body
+[Logger](https://github.com/insionng/vodka/blob/master/docs/middleware/logger) | Log HTTP requests
+[Recover](https://github.com/insionng/vodka/blob/master/docs/middleware/recover) | Recover from panics
+[Gzip](https://github.com/insionng/vodka/blob/master/docs/middleware/gzip) | Send gzip HTTP response
+[BasicAuth](https://github.com/insionng/vodka/blob/master/docs/middleware/basic-auth) | HTTP basic authentication
+[JWTAuth](https://github.com/insionng/vodka/blob/master/docs/middleware/jwt) | JWT authentication
+[Secure](https://github.com/insionng/vodka/blob/master/docs/middleware/secure) | Protection against attacks
+[CORS](https://github.com/insionng/vodka/blob/master/docs/middleware/cors) | Cross-Origin Resource Sharing
+[CSRF](https://github.com/insionng/vodka/blob/master/docs/middleware/csrf) | Cross-Site Request Forgery
+[Static](https://github.com/insionng/vodka/blob/master/docs/middleware/static) | Serve static files
+[HTTPSRedirect](https://github.com/insionng/vodka/blob/master/docs/middleware/redirect#httpsredirect-middleware) | Redirect HTTP requests to HTTPS
+[HTTPSWWWRedirect](https://github.com/insionng/vodka/blob/master/docs/middleware/redirect#httpswwwredirect-middleware) | Redirect HTTP requests to WWW HTTPS
+[WWWRedirect](https://github.com/insionng/vodka/blob/master/docs/middleware/redirect#wwwredirect-middleware) | Redirect non WWW requests to WWW
+[NonWWWRedirect](https://github.com/insionng/vodka/blob/master/docs/middleware/redirect#nonwwwredirect-middleware) | Redirect WWW requests to non WWW
+[AddTrailingSlash](https://github.com/insionng/vodka/blob/master/docs/middleware/trailing-slash#addtrailingslash-middleware) | Add trailing slash to the request URI
+[RemoveTrailingSlash](https://github.com/insionng/vodka/blob/master/docs/middleware/trailing-slash#removetrailingslash-middleware) | Remove trailing slash from the request URI
+[MethodOverride](https://github.com/insionng/vodka/blob/master/docs/middleware/method-override) | Override request method
 
-##### [Learn More](https://vodka.labstack.com/middleware/overview)
+##### [Learn More](https://github.com/insionng/vodka/blob/master/docs/middleware/overview)
 
 #### Third-party Middleware
 
