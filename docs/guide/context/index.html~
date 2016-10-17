@@ -8,7 +8,7 @@
         <meta property="og:site_name" content="vodka">
         <meta property="og:og:description" content="">
         <title>
-  Middleware Recipe | Vodka - Fast and unfancy HTTP server framework for Golang
+  Context | Vodka - Fast and unfancy HTTP server framework for Golang
         </title>
         <link rel="stylesheet" href="../../styles/doc.css">
     </head>
@@ -36,62 +36,62 @@
   
     <h4>> Guide</h4>
       
-        <a href="../../guide/installation/index.html">
+        <a href="../installation/index.html">
           Installation
         </a>
         
       
-        <a href="../../guide/migrating/index.html">
+        <a href="../migrating/index.html">
           Migrating
         </a>
         
       
-        <a href="../../guide/customization/index.html">
+        <a href="../customization/index.html">
           Customization
         </a>
         
       
-        <a href="../../guide/static-files/index.html">
+        <a href="../static-files/index.html">
           Static Files
         </a>
         
       
-        <a href="../../guide/templates/index.html">
+        <a href="../templates/index.html">
           Templates
         </a>
         
       
-        <a href="../../guide/routing/index.html">
+        <a href="../routing/index.html">
           Routing
         </a>
         
       
-        <a href="../../guide/context/index.html">
+        <a class="active" href="#">
           Context
         </a>
         
       
-        <a href="../../guide/cookies/index.html">
+        <a href="../cookies/index.html">
           Cookies
         </a>
         
       
-        <a href="../../guide/request/index.html">
+        <a href="../request/index.html">
           Request
         </a>
         
       
-        <a href="../../guide/error-handling/index.html">
+        <a href="../error-handling/index.html">
           Error Handling
         </a>
         
       
-        <a href="../../guide/testing/index.html">
+        <a href="../testing/index.html">
           Testing
         </a>
         
       
-        <a href="../../guide/faq/index.html">
+        <a href="../faq/index.html">
           FAQ
         </a>
         
@@ -172,72 +172,72 @@
   
     <h4>> Recipes</h4>
       
-        <a href="../hello-world/index.html">
+        <a href="../../recipes/hello-world/index.html">
           Hello World
         </a>
         
       
-        <a href="../crud/index.html">
+        <a href="../../recipes/crud/index.html">
           CRUD
         </a>
         
       
-        <a href="../cors/index.html">
+        <a href="../../recipes/cors/index.html">
           CORS
         </a>
         
       
-        <a href="../http2/index.html">
+        <a href="../../recipes/http2/index.html">
           HTTP/2
         </a>
         
       
-        <a class="active" href="#">
+        <a href="../../recipes/middleware/index.html">
           Middleware
         </a>
         
       
-        <a href="../streaming-response/index.html">
+        <a href="../../recipes/streaming-response/index.html">
           Streaming Response
         </a>
         
       
-        <a href="../websocket/index.html">
+        <a href="../../recipes/websocket/index.html">
           WebSocket
         </a>
         
       
-        <a href="../jsonp/index.html">
+        <a href="../../recipes/jsonp/index.html">
           JSONP
         </a>
         
       
-        <a href="../file-upload/index.html">
+        <a href="../../recipes/file-upload/index.html">
           File Upload
         </a>
         
       
-        <a href="../subdomains/index.html">
+        <a href="../../recipes/subdomains/index.html">
           Subdomains
         </a>
         
       
-        <a href="../jwt/index.html">
+        <a href="../../recipes/jwt/index.html">
           JWT
         </a>
         
       
-        <a href="../google-app-engine/index.html">
+        <a href="../../recipes/google-app-engine/index.html">
           Google App Engine
         </a>
         
       
-        <a href="../graceful-shutdown/index.html">
+        <a href="../../recipes/graceful-shutdown/index.html">
           Graceful Shutdown
         </a>
         
       
-        <a href="../embed-resources/index.html">
+        <a href="../../recipes/embed-resources/index.html">
           Embed Resources
         </a>
         
@@ -296,136 +296,69 @@
           <section>
             
 
-<h2 id="middleware-recipe">Middleware Recipe</h2>
+<h2 id="context">Context</h2>
 
-<h3 id="how-to-write-a-custom-middleware">How to write a custom middleware?</h3>
+<p><code>vodka.Context</code> represents the context of the current HTTP request. It holds request and
+response reference, path, path parameters, data, registered handler and APIs to read
+request and write response. Context is 100% compatible with standard <code>context.Context</code>.
+As Context is an interface, it is easy to extend it with custom APIs.</p>
 
-<ul>
-<li>Middleware to collect request count, statuses and uptime.</li>
-<li>Middleware to write custom <code>Server</code> header to the response.</li>
-</ul>
+<h4 id="extending-context">Extending Context</h4>
 
-<h4 id="server">Server</h4>
+<p><strong>Define a custom context</strong></p>
 
-<p><code>server.go</code></p>
-
-<pre><code class="language-go">
-package main
-
-import (
-	"net/http"
-	"strconv"
-	"sync"
-	"time"
-
-	"github.com/insionng/vodka"
-	"github.com/insionng/vodka/engine/standard"
-)
-
-type (
-	Stats struct {
-		Uptime       time.Time      `json:"uptime"`
-		RequestCount uint64         `json:"requestCount"`
-		Statuses     map[string]int `json:"statuses"`
-		mutex        sync.RWMutex
-	}
-)
-
-func NewStats() *Stats {
-	return &Stats{
-		Uptime:   time.Now(),
-		Statuses: make(map[string]int),
-	}
+<pre><code class="language-go">type CustomContext struct {
+	vodka.Context
 }
 
-// Process is the middleware function.
-func (s *Stats) Process(next vodka.HandlerFunc) vodka.HandlerFunc {
+func (c *CustomContext) Foo() {
+	println(&quot;foo&quot;)
+}
+
+func (c *CustomContext) Bar() {
+	println(&quot;bar&quot;)
+}
+</code></pre>
+
+<p><strong>Create a middleware to extend default context</strong></p>
+
+<pre><code class="language-go">e.Use(func(h vodka.HandlerFunc) vodka.HandlerFunc {
 	return func(c vodka.Context) error {
-		if err := next(c); err != nil {
-			c.Error(err)
-		}
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-		s.RequestCount++
-		status := strconv.Itoa(c.Response().Status())
-		s.Statuses[status]++
-		return nil
+		cc := &amp;CustomContext{c}
+		return h(cc)
 	}
-}
-
-// Handle is the endpoint to get stats.
-func (s *Stats) Handle(c vodka.Context) error {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return c.JSON(http.StatusOK, s)
-}
-
-// ServerHeader middleware adds a `Server` header to the response.
-func ServerHeader(next vodka.HandlerFunc) vodka.HandlerFunc {
-	return func(c vodka.Context) error {
-		c.Response().Header().Set(vodka.HeaderServer, "Vodka/2.0")
-		return next(c)
-	}
-}
-
-func main() {
-	e := vodka.New()
-
-	// Debug mode
-	e.SetDebug(true)
-
-	//-------------------
-	// Custom middleware
-	//-------------------
-	// Stats
-	s := NewStats()
-	e.Use(s.Process)
-	e.GET("/stats", s.Handle) // Endpoint to get stats
-
-	// Server header
-	e.Use(ServerHeader)
-
-	// Handler
-	e.GET("/", func(c vodka.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
-
-	// Start server
-	e.Run(standard.New(":1323"))
-}
+})
 </code></pre>
 
+<blockquote>
+<p>This middleware should be registered before any other middleware.</p>
+</blockquote>
 
-<h4 id="response">Response</h4>
+<p><strong>Use in handler</strong></p>
 
-<p><em>Headers</em></p>
-
-<pre><code class="language-sh">Content-Length:122
-Content-Type:application/json; charset=utf-8
-Date:Thu, 14 Apr 2016 20:31:46 GMT
-Server:Vodka/2.0
+<pre><code class="language-go">e.Get(&quot;/&quot;, func(c vodka.Context) error {
+	cc := c.(*CustomContext)
+	cc.Foo()
+	cc.Bar()
+	return cc.String(200, &quot;OK&quot;)
+})
 </code></pre>
 
-<p><em>Body</em></p>
+<h3 id="standard-context">Standard Context</h3>
 
-<pre><code class="language-js">{
-  &quot;uptime&quot;: &quot;2016-04-14T13:28:48.486548936-07:00&quot;,
-  &quot;requestCount&quot;: 5,
-  &quot;statuses&quot;: {
-    &quot;200&quot;: 4,
-    &quot;404&quot;: 1
-  }
-}
+<p><code>vodka.Context</code> embeds standard <code>context.Context</code> interface, so all it&rsquo;s functions
+are available right from <code>vodka.Context</code>.</p>
+
+<p><em>Example</em></p>
+
+<pre><code class="language-go">e.GET(&quot;/users/:name&quot;, func(c vodka.Context) error) {
+    c.SetContext(context.WithValue(nil, &quot;key&quot;, &quot;val&quot;))
+    // Pass it down...
+    // Use it...
+    val := c.Value(&quot;key&quot;).(string)
+    return c.String(http.StatusOK, name)
+})
 </code></pre>
-
-<h3 id="maintainers">Maintainers</h3>
-
-<ul>
-<li><a href="https://github.com/vishr">vishr</a></li>
-</ul>
-
-<h3 id="source-code-hahahugoshortcode-2hbhb"><a href="https://github.com/insionng/vodkax/tree/master/recipe/middleware
-">Source Code</a></h3>
 
           </section>
           <footer style="margin-top: 40px;">
