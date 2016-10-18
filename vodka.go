@@ -39,6 +39,7 @@ package vodka
 
 import (
 	"bytes"
+	kontext "context"
 	"errors"
 	"fmt"
 	"io"
@@ -48,7 +49,6 @@ import (
 	"runtime"
 	"sync"
 
-	gcontext "github.com/insionng/vodka/context"
 	"github.com/insionng/vodka/engine"
 	glog "github.com/insionng/vodka/libraries/gommon/log"
 	"github.com/insionng/vodka/log"
@@ -238,7 +238,7 @@ func New() (e *Vodka) {
 // NewContext returns a Context instance.
 func (e *Vodka) NewContext(req engine.Request, res engine.Response) Context {
 	return &context{
-		stdContext: gcontext.Background(),
+		stdContext: kontext.Background(),
 		request:    req,
 		response:   res,
 		store:      make(store),

@@ -2,22 +2,18 @@ package vodka
 
 import (
 	"bytes"
+	kontext "context"
+	"encoding/xml"
 	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
-
-	"strings"
-
-	gcontext "github.com/insionng/vodka/context"
-
-	"net/url"
-
-	"encoding/xml"
 	//"github.com/vodka-contrib/pongor"
 	"github.com/insionng/vodka/test"
 	"github.com/stretchr/testify/assert"
@@ -355,7 +351,7 @@ func TestContextRedirect(t *testing.T) {
 
 func TestStdContextEmbedded(t *testing.T) {
 	c := new(context)
-	sc := gcontext.WithValue(nil, "key", "val")
+	sc := kontext.WithValue(nil, "key", "val")
 	c.SetStdContext(sc)
 	assert.NotEqual(t, c, c.StdContext())
 }

@@ -1,6 +1,8 @@
 package vodka
 
 import (
+	"bytes"
+	kontext "context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -14,10 +16,6 @@ import (
 
 	"github.com/insionng/vodka/engine"
 	"github.com/insionng/vodka/log"
-
-	"bytes"
-
-	gcontext "github.com/insionng/vodka/context"
 )
 
 type (
@@ -25,10 +23,10 @@ type (
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
 		// StdContext returns `context.Context`.
-		StdContext() gcontext.Context
+		StdContext() kontext.Context
 
 		// SetStdContext sets `context.Context`.
-		SetStdContext(gcontext.Context)
+		SetStdContext(kontext.Context)
 
 		// Request returns `engine.Request` interface.
 		Request() engine.Request
@@ -192,7 +190,7 @@ type (
 	}
 
 	context struct {
-		stdContext gcontext.Context
+		stdContext kontext.Context
 		request    engine.Request
 		response   engine.Response
 		path       string
@@ -210,11 +208,11 @@ const (
 	indexPage = "index.html"
 )
 
-func (c *context) StdContext() gcontext.Context {
+func (c *context) StdContext() kontext.Context {
 	return c.stdContext
 }
 
-func (c *context) SetStdContext(ctx gcontext.Context) {
+func (c *context) SetStdContext(ctx kontext.Context) {
 	c.stdContext = ctx
 }
 
@@ -528,7 +526,7 @@ func ContentTypeByExtension(name string) (t string) {
 }
 
 func (c *context) Reset(req engine.Request, res engine.Response) {
-	c.stdContext = gcontext.Background()
+	c.stdContext = kontext.Background()
 	c.request = req
 	c.response = res
 	c.store = nil
