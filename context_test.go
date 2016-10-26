@@ -2,19 +2,23 @@ package vodka
 
 import (
 	"bytes"
-	kontext "context"
-	"encoding/xml"
 	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"text/template"
 	"time"
-	//"github.com/vodka-contrib/pongor"
+
+	"strings"
+
+	kontext "context"
+
+	"net/url"
+
+	"encoding/xml"
+
 	"github.com/insionng/vodka/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -97,9 +101,9 @@ func TestContext(t *testing.T) {
 	// XML
 	rec = test.NewResponseRecorder()
 	c = e.NewContext(req, rec).(*context)
-	err = c.XML(http.StatusOK, user{1, "Jon Snow"})
+	err = c.XML(http.StatusCreated, user{1, "Jon Snow"})
 	if assert.NoError(t, err) {
-		assert.Equal(t, http.StatusOK, rec.Status())
+		assert.Equal(t, http.StatusCreated, rec.Status())
 		assert.Equal(t, MIMEApplicationXMLCharsetUTF8, rec.Header().Get(HeaderContentType))
 		assert.Equal(t, xml.Header+userXML, rec.Body.String())
 	}
@@ -232,12 +236,12 @@ func TestContextPath(t *testing.T) {
 	e := New()
 	r := e.Router()
 
-	r.Add(GET, "/users/:id", nil, e)
+	r.Add(GET, "/users/:id", nil)
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/users/1", c)
 	assert.Equal(t, "/users/:id", c.Path())
 
-	r.Add(GET, "/users/:uid/files/:fid", nil, e)
+	r.Add(GET, "/users/:uid/files/:fid", nil)
 	c = e.NewContext(nil, nil)
 	r.Find(GET, "/users/1/files/1", c)
 	assert.Equal(t, "/users/:uid/files/:fid", c.Path())
@@ -398,7 +402,7 @@ func TestContextHandler(t *testing.T) {
 	r.Add(GET, "/handler", func(Context) error {
 		_, err := b.Write([]byte("handler"))
 		return err
-	}, e)
+	})
 	c := e.NewContext(nil, nil)
 	r.Find(GET, "/handler", c)
 	c.Handler()(c)

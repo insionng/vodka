@@ -39,7 +39,6 @@ package vodka
 
 import (
 	"bytes"
-	kontext "context"
 	"errors"
 	"fmt"
 	"io"
@@ -49,9 +48,10 @@ import (
 	"runtime"
 	"sync"
 
+	kontext "context"
 	"github.com/insionng/vodka/engine"
-	glog "github.com/insionng/vodka/libraries/gommon/log"
 	"github.com/insionng/vodka/log"
+	glog "github.com/insionng/vodka/libraries/gommon/log"
 )
 
 type (
@@ -242,7 +242,7 @@ func (e *Vodka) NewContext(req engine.Request, res engine.Response) Context {
 		request:    req,
 		response:   res,
 		store:      make(store),
-		vodka:      e,
+		vodka:       e,
 		pvalues:    make([]string, *e.maxParam),
 		handler:    NotFoundHandler,
 	}
@@ -473,7 +473,7 @@ func (e *Vodka) add(method, path string, handler HandlerFunc, middleware ...Midd
 			h = middleware[i](h)
 		}
 		return h(c)
-	}, e)
+	})
 	r := Route{
 		Method:  method,
 		Path:    path,
@@ -545,11 +545,11 @@ func (e *Vodka) ServeHTTP(req engine.Request, res engine.Response) {
 	c.Reset(req, res)
 
 	// Middleware
-	h := func(Context) error {
+	h := func(c Context) error {
 		method := req.Method()
 		path := req.URL().Path()
 		e.router.Find(method, path, c)
-		h := c.handler
+		h := c.Handler()
 		for i := len(e.middleware) - 1; i >= 0; i-- {
 			h = e.middleware[i](h)
 		}

@@ -1,8 +1,6 @@
 package vodka
 
 import (
-	"bytes"
-	kontext "context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -16,6 +14,10 @@ import (
 
 	"github.com/insionng/vodka/engine"
 	"github.com/insionng/vodka/log"
+
+	"bytes"
+
+	kontext "context"
 )
 
 type (
@@ -105,6 +107,8 @@ type (
 
 		// SetStore saves map data in the context.
 		SetStore(map[string]interface{})
+
+		At(string, string, HandlerFunc, ...MiddlewareFunc)
 
 		// Bind binds the request body into provided type `i`. The default binder
 		// does it based on Content-Type header.
@@ -198,7 +202,7 @@ type (
 		pvalues    []string
 		handler    HandlerFunc
 		store      store
-		vodka      *Vodka
+		vodka       *Vodka
 	}
 
 	store map[string]interface{}
@@ -327,16 +331,36 @@ func (c *context) GetStore() map[string]interface{} {
 	return c.store
 }
 
+func (c *context) At(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
+	if _, okay := c.vodka.router.routes[method+path]; !okay {
+		name := handlerName(handler)
+		c.vodka.router.Add(method, path, func(c Context) error {
+			h := handler
+			// Chain middleware
+			for i := len(middleware) - 1; i >= 0; i-- {
+				h = middleware[i](h)
+			}
+			return h(c)
+		})
+		r := Route{
+			Method:  method,
+			Path:    path,
+			Handler: name,
+		}
+		c.vodka.router.routes[method+path] = r
+	}
+}
+
 func (c *context) Bind(i interface{}) error {
 	return c.vodka.binder.Bind(i, c)
 }
 
-func (c *context) Render(code int, filename string) (err error) {
+func (c *context) Render(code int, name string) (err error) {
 	if c.vodka.renderer == nil {
 		return ErrRendererNotRegistered
 	}
 	buf := new(bytes.Buffer)
-	if err = c.vodka.renderer.Render(buf, filename, c); err != nil {
+	if err = c.vodka.renderer.Render(buf, name, c); err != nil {
 		return
 	}
 	c.response.Header().Set(HeaderContentType, MIMETextHTMLCharsetUTF8)
@@ -407,10 +431,13 @@ func (c *context) XML(code int, i interface{}) (err error) {
 }
 
 func (c *context) XMLBlob(code int, b []byte) (err error) {
+	c.response.Header().Set(HeaderContentType, MIMEApplicationXMLCharsetUTF8)
+	c.response.WriteHeader(code)
 	if _, err = c.response.Write([]byte(xml.Header)); err != nil {
 		return
 	}
-	return c.Blob(code, MIMEApplicationXMLCharsetUTF8, b)
+	_, err = c.response.Write(b)
+	return
 }
 
 func (c *context) Blob(code int, contentType string, b []byte) (err error) {
