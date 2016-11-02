@@ -12,8 +12,8 @@ import (
 
 	"errors"
 
-	"github.com/insionng/vodka/libraries/gommon/log"
 	"github.com/insionng/vodka/test"
+	"github.com/insionng/vodka/libraries/gommon/log"
 	"github.com/stretchr/testify/assert"
 )
 

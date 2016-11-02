@@ -1,10 +1,11 @@
 # Website
-site
-.publish
-
-# Node.js
-node_modules
+website/public
 
 # IntelliJ
 .idea
 *.iml
+
+# Glide
+vendor
+
+.DS_Store

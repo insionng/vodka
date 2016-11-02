@@ -29,8 +29,8 @@ type (
 	}
 )
 
-func (t *Template) Render(w io.Writer, filename string, c Context) error {
-	return t.templates.ExecuteTemplate(w, filename, c.GetStore())
+func (t *Template) Render(w io.Writer, name string, c Context) error {
+	return t.templates.ExecuteTemplate(w, name, c.GetStore())
 }
 
 func TestContext(t *testing.T) {
@@ -59,15 +59,15 @@ func TestContext(t *testing.T) {
 		templates: template.Must(template.New("hello").Parse("Hello, {{.name}}!")),
 	}
 	c.vodka.SetRenderer(tpl)
-	c.Set("name", "Insion Ng")
+	c.Set("name", "Jon Snow")
 	err := c.Render(http.StatusOK, "hello")
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, rec.Status())
-		assert.Equal(t, "Hello, Insion Ng!", rec.Body.String())
+		assert.Equal(t, "Hello, Jon Snow!", rec.Body.String())
 	}
 
 	c.vodka.renderer = nil
-	c.Set("name", "Vodka V2+")
+	c.Set("name", "Jon Snow")
 	err = c.Render(http.StatusOK, "hello")
 	assert.Error(t, err)
 
